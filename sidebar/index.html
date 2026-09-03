@@ -7,12 +7,43 @@
     <link rel="stylesheet" href="./style.css">
 </head>
 <body>
+    <select name="hosts" id="hosts"></select>
 
-    <div id="btns">
-        <button>Create Room</button>
-        <button>Join Room</button>
+    <div class="page" id="main">
+        <div class="btns">
+            <button id="rooms-btn">Rooms</button>
+            <button id="projects-btn">Projects</button>
+        </div>
     </div>
 
-    <div id="rooms"></div>
+    <div class="page" id="rooms">
+        <h2>Rooms</h2>
+        <div class="btns">
+            <button class="back-btn" id="rooms-back-btn">Back</button>
+            <button id="new-room-btn">New Room</button>
+        </div>
+        <div id="rooms-tools">
+            <input id="rooms-search" placeholder="search rooms" type="text">
+        </div>
+        <div id="rooms-list"></div>
+    </div>
+
+    <div class="page" id="room">
+        <h2 id="room-title"></h2>
+        <div class="btns">
+            <button class="back-btn" id="leave-room-btn">Leave Room</button>
+        </div>
+        <div id="room-users"></div>
+    </div>
+
+    <!-- <div id="btns">
+        <button id="new-project">New Project</button>
+    </div>
+
+    <span id="projects-title">Projects</span>
+
+    <div id="projects"></div> -->
+
+    <script type="module" src="./main.js"></script>
 </body>
 </html>
