@@ -9,7 +9,9 @@
     "categories": [
         "Other"
     ],
-    "activationEvents": [],
+    "activationEvents": [
+        "onFileSystem:collab"
+    ],
     "browser": "./dist/web/extension.js",
     "contributes": {
         "commands": [
@@ -40,13 +42,26 @@
                     "icon": "assets/icon.png"
                 }
             ]
-        }
+        },
+        "resourceLabelFormatters": [
+            {
+                "scheme": "collab",
+                "authority": "*",
+                "formatting": {
+                    "label": "${authority}",
+                    "separator": "/",
+                    "tildify": false,
+                    "workspaceSuffix": "",
+                    "workspaceTooltip": "connected"
+                }
+            }
+        ]
     },
     "scripts": {
         "test": "vscode-test-web --browserType=chromium --extensionDevelopmentPath=. --extensionTestsPath=dist/web/test/suite/index.js",
         "pretest": "npm run compile-web",
         "vscode:prepublish": "npm run package-web",
-        "compile-web": "webpack",
+        "compile-web": "cd sidebar && npm run build && cd .. && webpack",
         "watch-web": "webpack --watch",
         "package-web": "webpack --mode production --devtool hidden-source-map",
         "lint": "eslint src",
