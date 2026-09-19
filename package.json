@@ -1,8 +1,9 @@
 {
     "name": "live-collab",
-    "displayName": "live collab",
-    "description": "Realtime collaboration",
-    "version": "0.0.3",
+    "displayName": "Live Collab",
+    "description": "Realtime collaboration!",
+    "version": "0.0.6",
+    "icon": "assets/icon-white.png",
     "engines": {
         "vscode": "^1.74.0"
     },
