@@ -24,6 +24,39 @@
 				"$ts-webpack-watch",
 				"$tslint-webpack-watch"
 			]
+		},
+		{
+			// Opens a SECOND, fully independent VS Code instance running the
+			// extension. Must go through the `code` CLI with its own
+			// --user-data-dir: VS Code ignores --user-data-dir when it is set
+			// in a launch.json "args" array (microsoft/vscode#126737), so a
+			// compound of two extensionHost debug configs just reloads the
+			// first Extension Development Host instead of opening a second.
+			"label": "open-peer-2-window",
+			"type": "process",
+			"command": "code",
+			"args": [
+				"--user-data-dir=${workspaceFolder}/.vscode-peer2/user-data",
+				"--extensions-dir=${workspaceFolder}/.vscode-peer2/extensions",
+				"--extensionDevelopmentPath=${workspaceFolder}",
+				"--new-window",
+				"${workspaceFolder}"
+			],
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "silent",
+				"close": true
+			}
+		},
+		{
+			// preLaunchTask for "Peer 1": build once, then pop the Peer 2 window.
+			"label": "peers: build + open peer 2",
+			"dependsOrder": "sequence",
+			"dependsOn": [
+				"npm: compile-web",
+				"open-peer-2-window"
+			],
+			"problemMatcher": []
 		}
 	]
 }

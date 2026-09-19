@@ -1,15 +1,31 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
+
+import { WebsocketProvider } from 'y-websocket';
+
+export interface User {
+    name: string,
+    colour: string,
+    clientId: string
+}
+
+export function waitSync(provider: WebsocketProvider): Promise<void> {
+    return new Promise((resolve) => {
+        if (provider.synced) { return resolve(); }
+        const handler = (synced: boolean) => {
+            if (!synced) { return; }
+            provider.off('sync', handler);
+            resolve();
+        };
+        provider.on('sync', handler);
+    });
+}
 
 ///////////////////
 // AI code
 export function getRelativePath(uri: vscode.Uri): string | undefined {
-    const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
-    if (!workspaceFolder) {
-        return undefined;
-    }
-
-    return relative(workspaceFolder.uri.fsPath, uri.fsPath);
+    const folder = vscode.workspace.getWorkspaceFolder(uri);
+    if (!folder) { return undefined; }
+    return relative(folder.uri.path, uri.path);
 }
 
 export function getRelativePathUri(uri: vscode.Uri): string | undefined {
@@ -24,17 +40,17 @@ export function getRelativePathUri(uri: vscode.Uri): string | undefined {
 }
 
 function relative(from: string, to: string): string {
-  const fromParts = from.split('/').filter(Boolean);
-  const toParts = to.split('/').filter(Boolean);
+    const fromParts = from.split('/').filter(Boolean);
+    const toParts = to.split('/').filter(Boolean);
 
-  let i = 0;
-  while (i < fromParts.length && i < toParts.length && fromParts[i] === toParts[i]) {
-    i++;
-  }
+    let i = 0;
+    while (i < fromParts.length && i < toParts.length && fromParts[i] === toParts[i]) {
+        i++;
+    }
 
-  const upCount = fromParts.length - i;
-  const downParts = toParts.slice(i);
+    const upCount = fromParts.length - i;
+    const downParts = toParts.slice(i);
 
-  return [...Array(upCount).fill('..'), ...downParts].join('/');
+    return [...Array(upCount).fill('..'), ...downParts].join('/');
 }
 ///////////////////

@@ -26,14 +26,15 @@ window.addEventListener("message", (event) => {
         for (const host of msg.hosts) {
             const o = document.createElement("option");
             o.textContent = host.name;
-            o.value = host.url;
+            o.value = JSON.stringify({url: host.url, yjs_url: host.yjs_url});
+            console.log("v", o.value);
 
             hosts.appendChild(o);
         }
 
         hosts.value = "";
         if (state.host !== null) {
-            hosts.value = state.host;
+            hosts.value = JSON.stringify(state.host);
         }
     }
 
@@ -42,7 +43,10 @@ window.addEventListener("message", (event) => {
     }
 
     if (msg.state) {
-        hosts.value = msg.state.host;
+        console.log(msg.state);
+        hosts.value = JSON.stringify(msg.state.host);
+        console.log(hosts.options);
+        console.log(hosts.value);
     }
 });
 
@@ -51,9 +55,10 @@ hosts.onchange = () => {
         switchPage(null);
         return;
     }
-    vscode.postMessage({ selectHost: hosts.value });
+    const host = JSON.parse(hosts.value);
+    vscode.postMessage({ selectHost: host });
 
-    state.host = hosts.value;
+    state.host = host;
     vscode.setState(state);
 };
 

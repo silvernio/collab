@@ -44,7 +44,7 @@ window.addEventListener("message", (event) => {
     }
 
     if (msg.joinedRoom) {
-        openRoom(msg.newRoom);
+        openRoom(msg.joinedRoom);
     }
 
     if (msg.state) {

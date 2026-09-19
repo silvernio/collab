@@ -16,7 +16,7 @@ export const pages: Record<string, { e: HTMLDivElement }> = {
 
 export const page: { v: string | null } = { v: null };
 
-export const state: { host: string | null, page: string | null, room: string | null, session: string } = vscode.getState() || { host: null, page: null, room: null, session: (window as any).__SESSION_ID__ };
+export const state: { host: {url: string | null, yjs_url: string | null} | null, page: string | null, room: string | null, session: string } = vscode.getState() || { host: null, page: null, room: null, session: (window as any).__SESSION_ID__ };
 if ((window as any).__SESSION_ID__ !== state.session) {
     state.session = (window as any).__SESSION_ID__;
     state.host = null;

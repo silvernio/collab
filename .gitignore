@@ -4,3 +4,6 @@ node_modules
 .vscode-test-web/
 *.vsix
 .env
+
+.vscode-peer1/
+.vscode-peer2/

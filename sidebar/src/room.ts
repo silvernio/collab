@@ -14,6 +14,12 @@ window.addEventListener("message", (event) => {
         state.room = null;
         switchPage("rooms");
     }
+
+    if (msg.state) {
+        console.log(msg.state);
+        const title = document.getElementById("room-title") as HTMLSpanElement;
+        title.textContent = msg.state.room;
+    }
 });
 
 if (state.room !== null) {

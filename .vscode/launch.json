@@ -33,6 +33,41 @@
 				"${workspaceFolder}/dist/web/**/*.js"
 			],
 			"preLaunchTask": "${defaultBuildTask}"
+		},
+		{
+			// Two-peer collab testing.
+			//
+			// This ONE config is all you launch (F5). It:
+			//   1. builds the extension,
+			//   2. opens a second, independent VS Code window running the
+			//      extension (via the `code` CLI + its own --user-data-dir --
+			//      see .vscode/tasks.json for why this can't be a compound),
+			//   3. starts THIS window as the debugged Extension Development Host.
+			//
+			// Breakpoints bind in this (Peer 1) window. The Peer 2 window is a
+			// plain dev host with no debugger attached -- fine for exercising
+			// the collaboration path. To debug Peer 2 too, see "Attach to Peer 2".
+			"name": "Peer 1 (opens Peer 2)",
+			"type": "extensionHost",
+			"debugWebWorkerHost": true,
+			"request": "launch",
+			"args": [
+				"--extensionDevelopmentPath=${workspaceFolder}",
+				"--extensionDevelopmentKind=web"
+			],
+			"outFiles": ["${workspaceFolder}/dist/web/**/*.js"],
+			"preLaunchTask": "peers: build + open peer 2"
+		},
+		{
+			// Optional: attach to the Peer 2 window's extension host.
+			// First add  --inspect-extensions=9333  to open-peer-2-window's
+			// args in tasks.json, then run this after Peer 2 is up.
+			"name": "Attach to Peer 2",
+			"type": "node",
+			//"debugWebWorkerHost": true,
+			"request": "attach",
+			"port": 9333,
+			"outFiles": ["${workspaceFolder}/dist/web/**/*.js"]
 		}
 	]
 }

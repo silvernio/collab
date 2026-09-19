@@ -102,3 +102,11 @@ select option {
     opacity: 1;
     pointer-events: auto;
 }
+
+#rooms-search {
+  opacity: 0;
+}
+
+#projects-btn {
+  opacity: 0;
+}

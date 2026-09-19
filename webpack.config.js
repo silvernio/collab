@@ -31,12 +31,14 @@ const webExtensionConfig = {
 		extensions: ['.ts', '.js'], // support ts-files and js-files
 		alias: {
 			// provides alternate implementation for node module and source files
+			'process/browser': require.resolve('process/browser')
 		},
 		fallback: {
 			// Webpack 5 no longer polyfills Node.js core modules automatically.
 			// see https://webpack.js.org/configuration/resolve/#resolvefallback
 			// for the list of Node.js core module polyfills.
-			'assert': require.resolve('assert')
+			'assert': require.resolve('assert'),
+			process: require.resolve('process/browser')
 		}
 	},
 	module: {
@@ -47,10 +49,14 @@ const webExtensionConfig = {
 				loader: 'ts-loader'
 			}]
 		},
-     {
-        test: /\.html$/,
-        type: 'asset/source',
-      },]
+		{
+			test: /\.html$/,
+			type: 'asset/source',
+		},
+		{
+			test: /\.m?js$/,
+			resolve: { fullySpecified: false },
+		},]
 	},
 	plugins: [
 		new webpack.optimize.LimitChunkCountPlugin({
@@ -72,4 +78,4 @@ const webExtensionConfig = {
 	},
 };
 
-module.exports = [ webExtensionConfig ];
+module.exports = [webExtensionConfig];
