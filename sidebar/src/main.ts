@@ -3,6 +3,10 @@ import { state, switchPage, vscode } from "./global";
 import "./rooms";
 import "./room";
 
+const authBtn = document.getElementById("auth-btn") as HTMLButtonElement;
+const logoutBtn = document.getElementById("logout-btn") as HTMLButtonElement;
+const nameDisplay = document.getElementById("name") as HTMLSpanElement;
+
 const hosts = document.getElementById("hosts") as HTMLSelectElement;
 
 const roomsBtn = document.getElementById("rooms-btn") as HTMLButtonElement;
@@ -18,10 +22,10 @@ window.addEventListener("message", (event) => {
     if (msg.hosts) {
         hosts.innerHTML = "";
 
-        const o = document.createElement("option");
-        o.textContent = "--Select a host--";
-        o.value = "";
-        hosts.appendChild(o);
+        // const o = document.createElement("option");
+        // o.textContent = "--Select a host--";
+        // o.value = "";
+        // hosts.appendChild(o);
 
         for (const host of msg.hosts) {
             const o = document.createElement("option");
@@ -32,9 +36,13 @@ window.addEventListener("message", (event) => {
             hosts.appendChild(o);
         }
 
-        hosts.value = "";
+        // hosts.value = "";
+
         if (state.host !== null) {
             hosts.value = JSON.stringify(state.host);
+        } else {
+            hosts.value = JSON.stringify({url: msg.hosts[0].url, yjs_url: msg.hosts[0].yjs_url});
+            (hosts as any).onchange();
         }
     }
 
@@ -43,10 +51,21 @@ window.addEventListener("message", (event) => {
     }
 
     if (msg.state) {
-        console.log(msg.state);
         hosts.value = JSON.stringify(msg.state.host);
-        console.log(hosts.options);
-        console.log(hosts.value);
+    }
+
+    if (msg.cauth) {
+        nameDisplay.textContent = msg.cauth.account.label;
+
+        authBtn.classList.remove("show");
+        logoutBtn.classList.add("show");
+    }
+
+    if (msg.loggedOut) {
+        nameDisplay.textContent = "";
+
+        authBtn.classList.add("show");
+        logoutBtn.classList.remove("show");
     }
 });
 
@@ -63,3 +82,15 @@ hosts.onchange = () => {
 };
 
 vscode.postMessage({ hosts: true });
+
+authBtn.classList.add('show');
+
+authBtn.onpointerup = () => {
+    vscode.postMessage({auth: true});
+};
+
+logoutBtn.onpointerup = () => {
+    vscode.postMessage({logout: true});
+};
+
+vscode.postMessage({ cauth: true });

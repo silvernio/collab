@@ -18,8 +18,10 @@ window.addEventListener("message", (event) => {
     const msg = event.data;
     if (msg.rooms) {
         rooms.innerHTML = "";
+        rooms.style.display = "none";
 
         for (const room of msg.rooms) {
+             rooms.style.display = "flex";
             const div = document.createElement("div");
 
             const name = document.createElement("span");

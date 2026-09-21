@@ -8,6 +8,8 @@ import { SyncedFile } from './sync';
 
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
+import { CollabAuth } from './auth';
+import { AuthProvider, providerId } from './authProvider';
 
 let socket: Socket;
 
@@ -26,6 +28,28 @@ const user = {
     bandColour: `hsla(${hue}, 70%, 55%, 0.25)`,
     clientId: Math.random().toString(36).slice(6)
 };
+
+async function onSession(session: vscode.AuthenticationSession | undefined) {
+    if (session === undefined) {
+        if (user.name === "") { return; }
+        user.name = "";
+        const hue = Math.floor(Math.random() * 360);
+        user.colour = `hsl(${hue} 70% 55%)`;
+        user.bandColour = `hsla(${hue}, 70%, 55%, 0.25)`;
+
+        return;
+    }
+
+    user.name = session.account.label;
+
+    const res = await fetch("https://auth.silverspace.io/api/account/" + session.account.id + "/");
+    const data = await res.json();
+
+    if (data.colour) {
+        user.colour = data.colour;
+        user.bandColour = data.colour + "40";
+    }
+}
 
 export const FILE_SYSTEM_SCHEME = 'collab';
 
@@ -50,6 +74,14 @@ export function activate(context: vscode.ExtensionContext) {
         dispose: () => socket.disconnect(),
     });
 
+    const auth = new CollabAuth(context);
+
+    context.subscriptions.push(vscode.window.registerUriHandler(auth));
+
+    const authProvider = new AuthProvider(context, auth);
+
+    context.subscriptions.push(authProvider, vscode.authentication.registerAuthenticationProvider(providerId, 'Live Collab', authProvider));
+
     const provider = new SidebarProvider(context.extensionUri);
 
     const folder = vscode.workspace.workspaceFolders?.[0];
@@ -69,7 +101,7 @@ export function activate(context: vscode.ExtensionContext) {
     provider.msgCallbacks.push(async (msg) => {
         if (msg.ready) {
             if (chost !== null && croom !== null) {
-                provider.postMsg({ state: { host: {url: chost, yjs_url: cyjs}, room: croom, page: "rooms" } });
+                provider.postMsg({ state: { host: { url: chost, yjs_url: cyjs }, room: croom, page: "rooms" } });
             }
         }
 
@@ -173,7 +205,48 @@ export function activate(context: vscode.ExtensionContext) {
                 // cfile = null;
             });
         }
+
+        if (msg.auth) {
+            try {
+                const session = await vscode.authentication.getSession(providerId, [], { createIfNone: true });
+                // vscode.window.showInformationMessage(`signed in: ${session.account.label}`);
+                provider.postMsg({ cauth: session });
+                onSession(session);
+            } catch { }
+        }
+
+        if (msg.cauth) {
+            try {
+                const session = await vscode.authentication.getSession(providerId, [], { silent: true });
+                provider.postMsg({ cauth: session });
+                onSession(session);
+            } catch { }
+        }
+
+        if (msg.logout) {
+            const session = await vscode.authentication.getSession(providerId, [], { silent: true });
+
+            if (session) {
+                await authProvider.removeSession(session.id);
+                provider.postMsg({ loggedOut: true });
+                onSession(undefined);
+            }
+        }
     });
+
+    context.subscriptions.push(
+        vscode.authentication.onDidChangeSessions(async (e) => {
+            if (e.provider.id !== providerId) { return; }
+
+            const session = await vscode.authentication.getSession(providerId, [], { silent: true });
+
+            if (session) {
+                provider.postMsg({ cauth: session });
+            } else {
+                provider.postMsg({ loggedOut: true });
+            }
+        })
+    );
 
     context.subscriptions.push(
         vscode.window.registerWebviewViewProvider(
@@ -198,6 +271,14 @@ export function activate(context: vscode.ExtensionContext) {
     );
 
     //
+
+    (async () => {
+        try {
+            const session = await vscode.authentication.getSession(providerId, [], { silent: true });
+            provider.postMsg({ cauth: session });
+            onSession(session);
+        } catch { }
+    })();
 
     console.log('Collab started');
 }
@@ -227,7 +308,7 @@ function selectHost(provider: SidebarProvider, host: string, yjs_host: string, r
 
                 // vscode.window.showInformationMessage(`joined room: ${room}`);
                 croom = room;
-                provider.postMsg({ state: { host: {url: chost, yjs_url: cyjs}, room: croom, page: "rooms" } });
+                provider.postMsg({ state: { host: { url: chost, yjs_url: cyjs }, room: croom, page: "rooms" } });
                 provider.postMsg({ joinedRoom: room });
 
                 if (collabFs !== null) { collabFs.setSocket(hostSocket); }

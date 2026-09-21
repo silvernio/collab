@@ -10,6 +10,7 @@ button {
   color: var(--vscode-button-foreground);
   border: none;
   padding: 4px 12px;
+  border-radius: 4px;
 }
 
 button:hover {
@@ -20,6 +21,7 @@ input, textarea {
   background-color: var(--vscode-input-background);
   color: var(--vscode-input-foreground);
   border: 1px solid var(--vscode-input-border);
+  border-radius: 4px;
 }
 
 a {
@@ -34,6 +36,7 @@ select {
   background-color: var(--vscode-dropdown-background);
   color: var(--vscode-dropdown-foreground);
   border: 1px solid var(--vscode-dropdown-border);
+  border-radius: 4px;
 }
 
 select:focus {
@@ -64,11 +67,13 @@ select option {
 
 #rooms-list {
     margin-top: 5px;
-    display: flex;
+    /* display: flex; */
+    display: none;
     flex-direction: column;
     gap: 10px;
     padding: 5px;
     background-color: color-mix(in srgb, var(--vscode-sideBar-background) 80%, #ffffffcc 20%);
+    border-radius: 4px;
 }
 
 #rooms-list div {
@@ -81,6 +86,7 @@ select option {
     background-color: color-mix(in srgb, var(--vscode-sideBar-background) 80%, #ffffffcc 30%);
     align-items: center;
     position: relative;
+    border-radius: 4px;
 }
 
 #rooms-list div button {
@@ -109,4 +115,56 @@ select option {
 
 #projects-btn {
   opacity: 0;
+}
+
+#account {
+  display: flex;
+  flex-direction: row;
+  gap: 5px;
+  background-color: color-mix(in srgb, var(--vscode-sideBar-background) 80%, #ffffffcc 20%);
+  margin-bottom: 15px;
+  position: relative;
+  height: 30px;
+  align-items: center;
+  border-radius: 4px;
+}
+
+#account > img {
+  width: 15px;
+  height: 20px;
+  position: absolute;
+  left: 5px;
+}
+
+#account > span {
+  position: absolute;
+  left: 28px;
+}
+
+#account button {
+  height: 25px;
+  display: none;
+  position: absolute;
+  right: 2.5px;
+}
+
+#account button.show {
+  display: block;
+}
+
+#logout-btn {
+  max-width: 25px;
+}
+
+#logout-btn > img {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100;
+  scale: 0.8;
+}
+
+#hosts {
+  margin-left: 5px;
 }

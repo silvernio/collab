@@ -319,7 +319,7 @@ export class SyncedFile implements vscode.Disposable {
 
             const band = this.getBand(clientId, state.user.bandColour);
             if (anchor !== null && anchor !== head) {
-                editor.setDecorations(band, [new vscode.Range(clamp(anchor), headPos)]);
+                editor.setDecorations(band, [{range: new vscode.Range(clamp(anchor), headPos), hoverMessage: state.user.name}]);
             } else {
                 editor.setDecorations(band, []);
             }
