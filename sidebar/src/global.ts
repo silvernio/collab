@@ -3,25 +3,22 @@
 export const vscode = acquireVsCodeApi() as { postMessage: (any) => void, setState: (any) => void, getState: () => any };
 
 export const pages: Record<string, { e: HTMLDivElement }> = {
-    main: {
-        e: document.getElementById("main") as HTMLDivElement
-    },
-    rooms: {
-        e: document.getElementById("rooms") as HTMLDivElement
-    },
-    room: {
-        e: document.getElementById("room") as HTMLDivElement
-    }
+    main: { e: document.getElementById("main") as HTMLDivElement },
+    rooms: { e: document.getElementById("rooms") as HTMLDivElement },
+    room: { e: document.getElementById("room") as HTMLDivElement },
+    projects: { e: document.getElementById("projects") as HTMLDivElement },
+    project: { e: document.getElementById("project") as HTMLDivElement }
 };
 
 export const page: { v: string | null } = { v: null };
 
-export const state: { host: {url: string | null, yjs_url: string | null} | null, page: string | null, room: string | null, session: string } = vscode.getState() || { host: null, page: null, room: null, session: (window as any).__SESSION_ID__ };
+export const state: { host: { url: string | null, yjs_url: string | null } | null, page: string | null, room: string | null, project: string | null, session: string } = vscode.getState() || { host: null, page: null, room: null, project: null, session: (window as any).__SESSION_ID__ };
 if ((window as any).__SESSION_ID__ !== state.session) {
     state.session = (window as any).__SESSION_ID__;
     state.host = null;
     state.page = null;
     state.room = null;
+    state.project = null;
 }
 
 export function switchPage(npage: string | null) {
@@ -41,6 +38,7 @@ window.addEventListener("message", (event) => {
         state.host = msg.state.host;
         state.page = msg.state.page;
         state.room = msg.state.room;
+        state.project = msg.state.project;
         vscode.setState(state);
     }
 });

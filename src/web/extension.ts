@@ -3,7 +3,7 @@ import { SidebarProvider } from './panel';
 import { io, Socket } from 'socket.io-client';
 import { CollabFs } from './files';
 import { createDirectory, deleteFile, getAbsoluteUri, getFileStats, readDirectory, readFile, renameFile, writeFile } from './host';
-import { getRelativePath, waitSync } from './utils';
+import { genId, getRelativePath, waitSync } from './utils';
 import { SyncedFile } from './sync';
 
 import * as Y from 'yjs';
@@ -15,46 +15,82 @@ let socket: Socket;
 
 let hostSocket: Socket;
 let chost: string | null = null;
+let cid: number | null = null;
 let cyjs: string | null = null;
 let croom: string | null = null;
+let cproject: string | null = null;
 let isHost = false;
 
 let collabFs: CollabFs | null = null;
 
-const hue = Math.floor(Math.random() * 360);
-const user = {
-    name: '',
-    colour: `hsl(${hue} 70% 55%)`,
-    bandColour: `hsla(${hue}, 70%, 55%, 0.25)`,
-    clientId: Math.random().toString(36).slice(6)
-};
+// const user = {
+//     name: randomName,
+//     colour: `hsl(${hue} 70% 55%)`,
+//     bandColour: `hsla(${hue}, 70%, 55%, 0.25)`,
+//     clientId: Math.random().toString(36).slice(6)
+// };
 
-async function onSession(session: vscode.AuthenticationSession | undefined) {
-    if (session === undefined) {
-        if (user.name === "") { return; }
-        user.name = "";
-        const hue = Math.floor(Math.random() * 360);
-        user.colour = `hsl(${hue} 70% 55%)`;
-        user.bandColour = `hsla(${hue}, 70%, 55%, 0.25)`;
+// const accountUser = { name: "", colour: "", uuid: null };
+let hostUser: { name: string, colour: string, uuid: string | null } | null = null;
 
-        return;
+async function onSession(provider: SidebarProvider, session: vscode.AuthenticationSession | undefined) {
+    provideUser(provider, session);
+
+    // if (session === undefined) {
+    //     if (user.name.startsWith("guest") && user.name.length === 11) { return; }
+    //     const randomName = `guest${genId(6)}`;
+    //     user.name = randomName;
+    //     const hue = Math.floor(Math.random() * 360);
+    //     user.colour = `hsl(${hue} 70% 55%)`;
+    //     user.bandColour = `hsla(${hue}, 70%, 55%, 0.25)`;
+
+    //     provider.postMsg({ user });
+
+    //     return;
+    // }
+
+    // user.name = session.account.label;
+
+    // const res = await fetch("https://auth.silverspace.io/api/account/" + session.account.id + "/");
+    // const data = await res.json();
+
+    // if (data.colour) {
+    //     user.colour = data.colour;
+    //     user.bandColour = data.colour + "40";
+
+    //     provider.postMsg({ colour: user.colour });
+    // }
+}
+
+async function provideUser(provider: SidebarProvider, csession?: vscode.AuthenticationSession) {
+    if (hostUser !== null) {
+        provider.postMsg({ user: hostUser });
+    } else {
+        const session = csession ? csession : await vscode.authentication.getSession(providerId, [], { silent: true });
+        if (session !== undefined) {
+            const res = await fetch("https://auth.silverspace.io/api/account/" + session.account.id + "/");
+            const data = await res.json();
+            provider.postMsg({ user: { name: session.account.label, colour: data.colour, uuid: session.account.id } });
+        } else {
+            provider.postMsg({ user: { name: "", colour: "#ffffff", uuid: null } });
+        }
     }
+}
 
-    user.name = session.account.label;
+async function getSessionToken(cb: (data: object) => void) {
+    const session = await vscode.authentication.getSession(providerId, [], { silent: true });
 
-    const res = await fetch("https://auth.silverspace.io/api/account/" + session.account.id + "/");
-    const data = await res.json();
-
-    if (data.colour) {
-        user.colour = data.colour;
-        user.bandColour = data.colour + "40";
+    if (session !== undefined) {
+        cb({ token: session.accessToken });
+    } else {
+        cb({});
     }
 }
 
 export const FILE_SYSTEM_SCHEME = 'collab';
 
 export function activate(context: vscode.ExtensionContext) {
-    socket = io("https://server.silverspace.io", { path: "/collab/socket.io" });
+    socket = io("https://server.silverspace.io", { autoConnect: false, path: "/collab/socket.io", auth: getSessionToken });
 
     socket.on("connect", () => {
         // console.log("connected!");
@@ -87,21 +123,26 @@ export function activate(context: vscode.ExtensionContext) {
     const folder = vscode.workspace.workspaceFolders?.[0];
     if (folder?.uri.scheme === 'collab') {
         const params = new URLSearchParams(folder.uri.query);
+        const wid = params.get('id');
         const whost = params.get('host');
         const wyjs = params.get('yjs_host');
+        const projectId = params.get('project_id');
         const room = decodeURIComponent(folder.uri.authority);
 
         // vscode.window.showInformationMessage(`loading room: ${whost}, ${wyjs}, ${room}`);
 
-        if (whost !== null && wyjs !== null) {
-            selectHost(provider, whost, wyjs, room);
+        if (whost !== null && wyjs !== null && wid !== null) {
+            selectHost(provider, parseInt(wid), whost, wyjs, projectId === null ? room : null, projectId);
         }
     }
 
     provider.msgCallbacks.push(async (msg) => {
         if (msg.ready) {
-            if (chost !== null && croom !== null) {
-                provider.postMsg({ state: { host: { url: chost, yjs_url: cyjs }, room: croom, page: "rooms" } });
+            if (chost !== null && croom !== null && cid !== null) {
+                provider.postMsg({ state: { host: { id: cid, url: chost, yjs_url: cyjs }, room: croom, page: "rooms" } });
+            }
+            if (chost !== null && cproject !== null && cid !== null) {
+                provider.postMsg({ state: { host: { id: cid, url: chost, yjs_url: cyjs }, project: cproject, page: "projects" } });
             }
         }
 
@@ -121,12 +162,12 @@ export function activate(context: vscode.ExtensionContext) {
             // context.globalState.update("host", chost);
             // context.globalState.update("yjs_host", cyjs);
             // context.globalState.update("room", msg.joinRoom);
-            const workspaceUri = vscode.Uri.parse(`${FILE_SYSTEM_SCHEME}://${encodeURIComponent(msg.joinRoom)}/${encodeURIComponent(msg.joinRoom)}`).with({ query: new URLSearchParams({ host: chost ?? "", yjs_host: cyjs ?? "" }).toString() });
+            const workspaceUri = vscode.Uri.parse(`${FILE_SYSTEM_SCHEME}://${encodeURIComponent(msg.joinRoom)}/${encodeURIComponent(msg.joinRoom)}`).with({ query: new URLSearchParams({ id: cid?.toString() ?? "", host: chost ?? "", yjs_host: cyjs ?? "" }).toString() });
             vscode.commands.executeCommand('vscode.openFolder', workspaceUri, { forceNewWindow: false });
         }
 
         if (msg.selectHost) {
-            selectHost(provider, msg.selectHost.url, msg.selectHost.yjs_url);
+            selectHost(provider, msg.selectHost.id, msg.selectHost.url, msg.selectHost.yjs_url);
             // chost = msg.selectHost;
 
             // hostSocket = io(msg.selectHost, { path: "/socket.io" });
@@ -146,23 +187,34 @@ export function activate(context: vscode.ExtensionContext) {
         if (msg.newProject) {
             // vscode.window.showInformationMessage(`you want a new project!`);
 
-            const path = await vscode.window.showInputBox({
-                prompt: "Where's the project gonna be?",
-                placeHolder: "path",
-            });
-
             const name = await vscode.window.showInputBox({
                 prompt: "What's the project name?",
                 placeHolder: "name",
             });
 
-            if (path !== undefined || name !== undefined) {
+            if (name !== undefined) {
                 if (hostSocket) {
-                    hostSocket.emit("newProject", "", path, name, (id: number) => {
-                        // vscode.window.showInformationMessage(`new project! ${id}`);
-                    });
+                    const id: number | null = await hostSocket.emitWithAck("newProject", name);
+
+                    if (id !== null && name !== undefined) {
+                        openProject(id, name);
+                    }
+
+                    // provider.postMsg({newProject: {name, path, id}});
+
+                    // hostSocket.emit("newProject", "", path, name, (id: number) => {
+                    //     // vscode.window.showInformationMessage(`new project! ${id}`);
+                    // });
                 }
             }
+        }
+
+        if (msg.openProject && hostSocket) {
+            openProject(msg.openProject.id, msg.openProject.name);
+        }
+
+        if (msg.projects && hostSocket) {
+            provider.postMsg({projects: await hostSocket.emitWithAck("projects")});
         }
 
         if (msg.newRoom) {
@@ -179,7 +231,7 @@ export function activate(context: vscode.ExtensionContext) {
                 // const workspaceUri = vscode.Uri.parse(`${FILE_SYSTEM_SCHEME}://collab/${name}/`);
                 // vscode.commands.executeCommand('vscode.openFolder', workspaceUri, { forceNewWindow: false });
                 if (hostSocket) {
-                    hostSocket.emit("newRoom", name, (success: boolean) => {
+                    hostSocket.emit("newRoom", name, (_success: boolean) => {
                         // vscode.window.showInformationMessage(`new room! ${success}`);
                         croom = name;
                         provider.postMsg({ newRoom: name });
@@ -211,16 +263,19 @@ export function activate(context: vscode.ExtensionContext) {
                 const session = await vscode.authentication.getSession(providerId, [], { createIfNone: true });
                 // vscode.window.showInformationMessage(`signed in: ${session.account.label}`);
                 provider.postMsg({ cauth: session });
-                onSession(session);
+                onSession(provider, session);
+
+                socket.disconnect().connect();
             } catch { }
         }
 
-        if (msg.cauth) {
-            try {
-                const session = await vscode.authentication.getSession(providerId, [], { silent: true });
-                provider.postMsg({ cauth: session });
-                onSession(session);
-            } catch { }
+        if (msg.user) {
+            provideUser(provider);
+            // try {
+            //     const session = await vscode.authentication.getSession(providerId, [], { silent: true });
+            //     provider.postMsg({ cauth: session });
+            //     onSession(provider, session);
+            // } catch { }
         }
 
         if (msg.logout) {
@@ -229,7 +284,9 @@ export function activate(context: vscode.ExtensionContext) {
             if (session) {
                 await authProvider.removeSession(session.id);
                 provider.postMsg({ loggedOut: true });
-                onSession(undefined);
+                onSession(provider, undefined);
+
+                socket.disconnect().connect();
             }
         }
     });
@@ -245,6 +302,10 @@ export function activate(context: vscode.ExtensionContext) {
             } else {
                 provider.postMsg({ loggedOut: true });
             }
+
+            onSession(provider, session);
+
+            socket.disconnect().connect();
         })
     );
 
@@ -263,7 +324,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(
         vscode.workspace.onDidSaveTextDocument((document) => {
-            if (!croom || !hostSocket) { return; }
+            if ((!croom && !cproject) || !hostSocket) { return; }
             const file = getRelativePath(document.uri);
             if (!file) { return; }
             hostSocket.emit('saveFile', file);
@@ -276,20 +337,31 @@ export function activate(context: vscode.ExtensionContext) {
         try {
             const session = await vscode.authentication.getSession(providerId, [], { silent: true });
             provider.postMsg({ cauth: session });
-            onSession(session);
+            onSession(provider, session);
         } catch { }
+
+        socket.connect();
     })();
 
     console.log('Collab started');
 }
 
-function selectHost(provider: SidebarProvider, host: string, yjs_host: string, room: string | null = null) {
+async function selectHost(provider: SidebarProvider, hosti: number, host: string, yjs_host: string, room: string | null = null, project_id: string | null = null) {
     chost = host;
     cyjs = yjs_host;
+    cid = hosti;
 
-    hostSocket = io(host, { path: "/socket.io" });
+    if (hostSocket) {
+        hostSocket.disconnect();
+        hostUser = null;
+        provideUser(provider);
+    }
 
-    hostSocket.on("connect", () => {
+    const token: string | null = await socket.emitWithAck("joinHost", hosti);
+
+    hostSocket = io(host, { path: "/socket.io", auth: token ? { token } : undefined });
+
+    hostSocket.on("connect", async () => {
         // vscode.window.showInformationMessage(`connected to host!: ${host}`);
 
         provider.postMsg({ hostConnected: true });
@@ -308,14 +380,36 @@ function selectHost(provider: SidebarProvider, host: string, yjs_host: string, r
 
                 // vscode.window.showInformationMessage(`joined room: ${room}`);
                 croom = room;
-                provider.postMsg({ state: { host: { url: chost, yjs_url: cyjs }, room: croom, page: "rooms" } });
-                provider.postMsg({ joinedRoom: room });
+                provider.postMsg({ state: { host: { id: cid, url: chost, yjs_url: cyjs }, room: croom, project: cproject, page: "rooms" } });
+                // provider.postMsg({ joinedRoom: room });
 
                 if (collabFs !== null) { collabFs.setSocket(hostSocket); }
 
                 openDocuments();
             });
         }
+
+        if (project_id !== null) {
+            const name = await hostSocket.emitWithAck("openProject", project_id, null);
+            
+            if (!name) {
+                vscode.commands.executeCommand('workbench.action.closeFolder');
+                return;
+            }
+
+            cproject = name;
+            provider.postMsg({ state: { host: { id: cid, url: chost, yjs_url: cyjs }, room: croom, project: cproject, page: "rooms" } });
+
+            if (collabFs !== null) { collabFs.setSocket(hostSocket); }
+
+            openDocuments();
+        }
+    });
+
+    hostSocket.on("data", (name: string, colour: string, uuid: string | null) => {
+        console.log(name, colour, uuid);
+        hostUser = {name, colour, uuid};
+        provideUser(provider);
     });
 
     const initing = new Map<string, Promise<void>>();
@@ -427,6 +521,17 @@ function selectHost(provider: SidebarProvider, host: string, yjs_host: string, r
 
 //
 
+function openProject(id: number, name: string) {
+    const workspaceUri = vscode.Uri.parse(`${FILE_SYSTEM_SCHEME}://${encodeURIComponent(name)}/${encodeURIComponent(name)}`).with({ query: new URLSearchParams({ id: cid?.toString() ?? "", host: chost ?? "", yjs_host: cyjs ?? "", project_id: id + "" }).toString() });
+    vscode.commands.executeCommand('vscode.openFolder', workspaceUri, { forceNewWindow: false });
+}
+
+//
+
+//
+
+//
+
 const synced = new Map<string, SyncedFile>();
 
 vscode.workspace.onDidOpenTextDocument(async (document) => {
@@ -445,7 +550,7 @@ function openDocument(document: vscode.TextDocument) {
     if (synced.has(path)) { return; }
 
     const file = getRelativePath(document.uri);
-    if (!file || !croom || !cyjs) { return; }
+    if (!file || (!croom && !cproject) || !cyjs) { return; }
 
     hostSocket.emit('openFile', file, async (id: string, wasInit: boolean) => {
         if (!cyjs) { return; }
@@ -454,7 +559,7 @@ function openDocument(document: vscode.TextDocument) {
             return;
         }
 
-        synced.set(path, await SyncedFile.create(cyjs, id, document, user));
+        synced.set(path, await SyncedFile.create(hostSocket, cyjs, id, document, hostSocket.id ?? "none"));
 
         if (wasInit) { hostSocket.emit("connectedFile", id); }
     });

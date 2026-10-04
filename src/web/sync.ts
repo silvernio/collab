@@ -4,12 +4,15 @@ import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
 import { User, waitSync } from './utils';
 import diff from 'fast-diff';
+import { Socket } from 'socket.io-client';
+import { cssColorToRGBA } from './rgb';
 
 export class SyncedFile implements vscode.Disposable {
     doc: Y.Doc;
     provider: WebsocketProvider;
     document: vscode.TextDocument;
     ytext: Y.Text;
+    hostSocket: Socket;
 
     chain = Promise.resolve();
     subs: vscode.Disposable[] = [];
@@ -26,17 +29,18 @@ export class SyncedFile implements vscode.Disposable {
 
     disposed = false;
 
-    private constructor(doc: Y.Doc, provider: WebsocketProvider, document: vscode.TextDocument) {
+    private constructor(hostSocket: Socket, doc: Y.Doc, provider: WebsocketProvider, document: vscode.TextDocument) {
+        this.hostSocket = hostSocket;
         this.doc = doc;
         this.provider = provider;
         this.document = document;
         this.ytext = doc.getText('content');
     }
 
-    static async create(url: string, id: string, document: vscode.TextDocument, user: User) {
+    static async create(hostSocket: Socket, url: string, id: string, document: vscode.TextDocument, userId: string) {
         const doc = new Y.Doc();
         const provider = new WebsocketProvider(url, id, doc);
-        const file = new SyncedFile(doc, provider, document);
+        const file = new SyncedFile(hostSocket, doc, provider, document);
 
         file.ytext.observe(file.remoteChange);
 
@@ -78,7 +82,7 @@ export class SyncedFile implements vscode.Disposable {
 
         await file.check();
 
-        file.provider.awareness.setLocalStateField('user', user);
+        file.provider.awareness.setLocalStateField('user', userId);
 
         file.subs.push(vscode.window.onDidChangeTextEditorSelection(file.selectionChange));
 
@@ -289,7 +293,7 @@ export class SyncedFile implements vscode.Disposable {
         return d;
     }
 
-    private awarenessChange = () => {
+    private awarenessChange = async () => {
         if (this.disposed) { return; }
 
         const editor = vscode.window.visibleTextEditors.find(
@@ -306,6 +310,11 @@ export class SyncedFile implements vscode.Disposable {
         for (const [clientId, state] of states) {
             if (clientId === this.doc.clientID) { continue; }
             if (!state.cursor || !state.user) { continue; }
+
+            const data = await this.hostSocket.emitWithAck("user", state.user);
+            const dc = cssColorToRGBA(data.colour);
+            const bandColour = dc ? `rgba(${dc[0]*255}, ${dc[1]*255}, ${dc[2]*255}, ${dc[3]/4})` : `00000000`;
+
             seen.add(clientId);
 
             const head = this.decodePos(state.cursor.head);
@@ -313,13 +322,13 @@ export class SyncedFile implements vscode.Disposable {
             if (head === null) { continue; }
 
             const headPos = clamp(head);
-            editor.setDecorations(this.getCaret(clientId, state.user.colour), [
-                { range: new vscode.Range(headPos, headPos), hoverMessage: state.user.name }
+            editor.setDecorations(this.getCaret(clientId, data.colour), [
+                { range: new vscode.Range(headPos, headPos), hoverMessage: data.name }
             ]);
 
-            const band = this.getBand(clientId, state.user.bandColour);
+            const band = this.getBand(clientId, bandColour);
             if (anchor !== null && anchor !== head) {
-                editor.setDecorations(band, [{range: new vscode.Range(clamp(anchor), headPos), hoverMessage: state.user.name}]);
+                editor.setDecorations(band, [{range: new vscode.Range(clamp(anchor), headPos), hoverMessage: data.name}]);
             } else {
                 editor.setDecorations(band, []);
             }

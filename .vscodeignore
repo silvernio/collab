@@ -14,3 +14,13 @@ esbuild.js
 **/*.map
 **/*.ts
 **/.vscode-test.*
+.vscode-peer2/**
+
+.vscode-peer2/**
+sidebar/node_modules/**
+sidebar/public/**
+sidebar/index.html
+sidebar/package.json
+sidebar/package-lock.json
+sidebar/.gitignore
+**/*.map

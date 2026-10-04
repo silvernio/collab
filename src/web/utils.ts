@@ -20,6 +20,16 @@ export function waitSync(provider: WebsocketProvider): Promise<void> {
     });
 }
 
+const letters = "0123456789".split("");
+
+export function genId(n: number) {
+    let id = "";
+    for (let i = 0; i < n; i++) {
+        id += letters[Math.floor(Math.random() * letters.length)];
+    }
+    return id;
+}
+
 ///////////////////
 // AI code
 export function getRelativePath(uri: vscode.Uri): string | undefined {

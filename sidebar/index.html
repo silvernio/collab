@@ -1,4 +1,5 @@
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -6,11 +7,21 @@
 
     <link rel="stylesheet" href="./style.css">
 </head>
+
 <body>
+    <!-- AI code -->
+    <svg width="0" height="0" style="position:absolute">
+        <filter id="filter" color-interpolation-filters="sRGB">
+            <feFlood id="filter-colour" flood-color="#ffffff00" result="c" />
+            <feComposite in="c" in2="SourceAlpha" operator="in" />
+        </filter>
+    </svg>
+    <!--  -->
+
     <div id="account">
         <img src="/account.png" alt="">
         <span id="name"></span>
-        <button id="auth-btn">Signup / Login</button>
+        <button id="auth-btn"><img src="/login.png" alt=""></button>
         <button id="logout-btn"><img src="/logout.png" alt=""></button>
     </div>
 
@@ -18,7 +29,7 @@
         <span>host</span>
         <select name="hosts" id="hosts"></select>
     </div>
-    
+
 
     <div class="page" id="main">
         <div class="btns">
@@ -33,11 +44,11 @@
             <button class="back-btn" id="rooms-back-btn">Back</button>
             <button id="new-room-btn">New Room</button>
         </div>
-        <div id="rooms-tools">
-            <input id="rooms-search" placeholder="search rooms" type="text">
+        <div class="list-tools">
+            <input class="tools-search" id="rooms-search" placeholder="search rooms" type="text">
         </div>
 
-        <div id="rooms-list"></div>
+        <div class="list" id="rooms-list"></div>
     </div>
 
     <div class="page" id="room">
@@ -45,7 +56,29 @@
         <div class="btns">
             <button class="back-btn" id="leave-room-btn">Leave Room</button>
         </div>
-        <div id="room-users"></div>
+        <div class="users-list" id="room-users"></div>
+    </div>
+
+    <div class="page" id="projects">
+        <h2>Projects</h2>
+
+        <div class="btns">
+            <button class="back-btn" id="projects-back-btn">Back</button>
+            <button id="new-project-btn">New Project</button>
+        </div>
+        <div class="list-tools">
+            <input class="tools-search" id="projects-search" placeholder="search projects" type="text">
+        </div>
+
+        <div class="list" id="projects-list"></div>
+    </div>
+
+    <div class="page" id="project">
+        <h2 id="project-title"></h2>
+        <div class="btns">
+            <button class="back-btn" id="leave-project-btn">Leave Project</button>
+        </div>
+        <div class="users-list" id="project-users"></div>
     </div>
 
     <!-- <div id="btns">
@@ -58,4 +91,5 @@
 
     <script type="module" src="./src/main.ts"></script>
 </body>
+
 </html>

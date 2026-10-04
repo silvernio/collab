@@ -11,16 +11,17 @@ This extension allows you to code collaborate with others in realtime!
 - Edit files at the same time
 - See other's cursors
 - Login and identify others
+- Create & open projects
 
 ## How to use
-### To join a room
 - Open the collab sidebar tab, it's the 3 people icon thing
+
+### To join a room
 - Open rooms
 - Join a room in the room list
 
 ### To host a room
 - First, open the folder that you want to share
-- Open the collab sidebar tab, it's the 3 people icon thing
 - Open rooms
 - Create a room and provide a name
 
@@ -32,7 +33,7 @@ This extension allows you to code collaborate with others in realtime!
 ---
 
 ### Known bugs
-- Opening non-text files like .pngs and .gifs closes the room
+- Opening non-text files like .pngs and .gifs closes the room (projects work fine)
 - Typing at the same time as someone else occasionally duplicates / discards text
-- Renaming / moving files & folders doesn't work as a client
+- Renaming / moving files & folders doesn't work as a client (projects work fine)
 - Saving files occasionally brings up conflict popups - just overwrite for now

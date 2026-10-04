@@ -16,7 +16,6 @@ window.addEventListener("message", (event) => {
     }
 
     if (msg.state) {
-        console.log(msg.state);
         const title = document.getElementById("room-title") as HTMLSpanElement;
         title.textContent = msg.state.room;
     }

@@ -45,11 +45,11 @@ window.addEventListener("message", (event) => {
         openRoom(msg.newRoom);
     }
 
-    if (msg.joinedRoom) {
-        openRoom(msg.joinedRoom);
-    }
+    // if (msg.joinedRoom) {
+    //     openRoom(msg.joinedRoom);
+    // }
 
-    if (msg.state) {
+    if (msg.state && msg.state.room !== null) {
         openRoom(msg.state.room);
     }
 });
