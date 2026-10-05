@@ -19,3 +19,9 @@ if (state.project !== null) {
     const title = document.getElementById("project-title") as HTMLSpanElement;
     title.textContent = state.project;
 }
+
+const inviteBtn = document.getElementById("project-invite-btn") as HTMLButtonElement;
+
+inviteBtn.onpointerup = () => {
+    vscode.postMessage({ invite: true });
+};

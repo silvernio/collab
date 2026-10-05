@@ -30,6 +30,14 @@ export function genId(n: number) {
     return id;
 }
 
+export function inviteLink(name: string, hostId: number, host: string, yjsHost: string, projectId: number | null) {
+    const params = new URLSearchParams({ id: String(hostId), host, yjs_host: yjsHost });
+    if (projectId !== null) { params.set('project_id', String(projectId)); }
+
+    const folder = `collab://${encodeURIComponent(name.toLowerCase())}/${encodeURIComponent(name)}?${params}`;
+    return `https://collab.silverspace.io/?folder=${encodeURIComponent(folder)}`;
+}
+
 ///////////////////
 // AI code
 export function getRelativePath(uri: vscode.Uri): string | undefined {

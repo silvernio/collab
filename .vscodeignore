@@ -24,3 +24,6 @@ sidebar/package.json
 sidebar/package-lock.json
 sidebar/.gitignore
 **/*.map
+
+deploy.sh
+.deploy-stage

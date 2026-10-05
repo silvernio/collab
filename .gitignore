@@ -4,6 +4,9 @@ node_modules
 .vscode-test-web/
 *.vsix
 .env
+deploy.sh
 
 .vscode-peer1/
 .vscode-peer2/
+
+.deploy-stage

@@ -25,3 +25,9 @@ if (state.room !== null) {
     const title = document.getElementById("room-title") as HTMLSpanElement;
     title.textContent = state.room;
 }
+
+const inviteBtn = document.getElementById("room-invite-btn") as HTMLButtonElement;
+
+inviteBtn.onpointerup = () => {
+    vscode.postMessage({ invite: true });
+};

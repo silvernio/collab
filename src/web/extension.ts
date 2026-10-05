@@ -3,7 +3,7 @@ import { SidebarProvider } from './panel';
 import { io, Socket } from 'socket.io-client';
 import { CollabFs } from './files';
 import { createDirectory, deleteFile, getAbsoluteUri, getFileStats, readDirectory, readFile, renameFile, writeFile } from './host';
-import { genId, getRelativePath, waitSync } from './utils';
+import { genId, getRelativePath, inviteLink, waitSync } from './utils';
 import { SyncedFile } from './sync';
 
 import * as Y from 'yjs';
@@ -19,6 +19,7 @@ let cid: number | null = null;
 let cyjs: string | null = null;
 let croom: string | null = null;
 let cproject: string | null = null;
+let cprojectId: number | null = null;
 let isHost = false;
 
 let collabFs: CollabFs | null = null;
@@ -289,6 +290,11 @@ export function activate(context: vscode.ExtensionContext) {
                 socket.disconnect().connect();
             }
         }
+
+        if (msg.invite && cid && chost && cyjs) {
+            await vscode.env.clipboard.writeText(inviteLink(croom ?? (cproject ?? ''), cid, chost, cyjs, cprojectId));
+            vscode.window.showInformationMessage("Invite link copied");
+        }
     });
 
     context.subscriptions.push(
@@ -398,6 +404,7 @@ async function selectHost(provider: SidebarProvider, hosti: number, host: string
             }
 
             cproject = name;
+            cprojectId = parseInt(project_id);
             provider.postMsg({ state: { host: { id: cid, url: chost, yjs_url: cyjs }, room: croom, project: cproject, page: "rooms" } });
 
             if (collabFs !== null) { collabFs.setSocket(hostSocket); }
@@ -550,7 +557,7 @@ function openDocument(document: vscode.TextDocument) {
     if (synced.has(path)) { return; }
 
     const file = getRelativePath(document.uri);
-    if (!file || (!croom && !cproject) || !cyjs) { return; }
+    if (!file || (!croom && !cproject) || !cyjs || !hostSocket) { return; }
 
     hostSocket.emit('openFile', file, async (id: string, wasInit: boolean) => {
         if (!cyjs) { return; }

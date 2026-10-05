@@ -145,7 +145,7 @@ select option {
   display: block;
 }
 
-#account button > img {
+#account button > img, .title button > img {
   position: absolute;
   left: 0;
   top: 0;
@@ -156,4 +156,18 @@ select option {
 
 #hosts {
   margin-left: 5px;
+}
+
+.title {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
+.title button {
+  height: 25px;
+  max-width: 25px;
+  display: block;
+  position: relative;
 }
