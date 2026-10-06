@@ -65,7 +65,7 @@ select option {
     /* display: flex; */
     display: none;
     flex-direction: column;
-    gap: 10px;
+    gap: 5px;
     padding: 5px;
     background-color: color-mix(in srgb, var(--vscode-sideBar-background) 80%, #ffffffcc 20%);
     border-radius: 4px;
@@ -170,4 +170,17 @@ select option {
   max-width: 25px;
   display: block;
   position: relative;
+}
+
+.users-list {
+  margin-top: 15px;
+  display: flex;
+}
+
+.users-list div {
+  background-color: color-mix(in srgb, color-mix(in srgb, var(--vscode-sideBar-background) 80%, #ffffffcc 20%) 80%, var(--colour) 20%);
+}
+
+.users-list div.offline {
+  opacity: 0.5;
 }

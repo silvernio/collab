@@ -24,6 +24,8 @@ let isHost = false;
 
 let collabFs: CollabFs | null = null;
 
+let presence: any[] = [];
+
 // const user = {
 //     name: randomName,
 //     colour: `hsl(${hue} 70% 55%)`,
@@ -93,7 +95,32 @@ export const FILE_SYSTEM_SCHEME = 'collab';
 export function activate(context: vscode.ExtensionContext) {
     socket = io("https://server.silverspace.io", { autoConnect: false, path: "/collab/socket.io", auth: getSessionToken });
 
+    let first = true;
     socket.on("connect", () => {
+        if (!first && cid !== null && chost !== null && cyjs !== null) {
+            selectHost(provider, cid, chost, cyjs, croom, cprojectId ? cprojectId + "" : null);
+        }
+
+        const folder = vscode.workspace.workspaceFolders?.[0];
+        if (first && folder?.uri.scheme === 'collab') {
+            const params = new URLSearchParams(folder.uri.query);
+            const wid = params.get('id');
+            const whost = params.get('host');
+            const wyjs = params.get('yjs_host');
+            const projectId = params.get('project_id');
+            const room = decodeURIComponent(folder.uri.authority);
+
+            // vscode.window.showInformationMessage(`loading room: ${room}, ${projectId}`);
+
+
+
+            if (whost !== null && wyjs !== null && wid !== null) {
+                selectHost(provider, parseInt(wid), whost, wyjs, projectId === null ? room : null, projectId);
+                justLoaded = true;
+            }
+        }
+
+        first = false;
         // console.log("connected!");
         // vscode.window.showInformationMessage("connected!!!");
     });
@@ -121,30 +148,23 @@ export function activate(context: vscode.ExtensionContext) {
 
     const provider = new SidebarProvider(context.extensionUri);
 
-    const folder = vscode.workspace.workspaceFolders?.[0];
-    if (folder?.uri.scheme === 'collab') {
-        const params = new URLSearchParams(folder.uri.query);
-        const wid = params.get('id');
-        const whost = params.get('host');
-        const wyjs = params.get('yjs_host');
-        const projectId = params.get('project_id');
-        const room = decodeURIComponent(folder.uri.authority);
-
-        // vscode.window.showInformationMessage(`loading room: ${whost}, ${wyjs}, ${room}`);
-
-        if (whost !== null && wyjs !== null && wid !== null) {
-            selectHost(provider, parseInt(wid), whost, wyjs, projectId === null ? room : null, projectId);
-        }
-    }
+    let justLoaded = false;
 
     provider.msgCallbacks.push(async (msg) => {
         if (msg.ready) {
             if (chost !== null && croom !== null && cid !== null) {
-                provider.postMsg({ state: { host: { id: cid, url: chost, yjs_url: cyjs }, room: croom, page: "rooms" } });
+                provider.postMsg({ state: { host: { id: cid, url: chost, yjs_url: cyjs }, project: null, room: croom, page: "rooms" } });
             }
             if (chost !== null && cproject !== null && cid !== null) {
-                provider.postMsg({ state: { host: { id: cid, url: chost, yjs_url: cyjs }, project: cproject, page: "projects" } });
+                provider.postMsg({ state: { host: { id: cid, url: chost, yjs_url: cyjs }, project: cproject, room: null, page: "projects" } });
             }
+        }
+
+        if (msg.presence) {
+            provider.postMsg({ presence });
+            // if (hostSocket) {
+            //     hostSocket.emit("presence");
+            // }
         }
 
         if (msg.hosts) {
@@ -168,7 +188,10 @@ export function activate(context: vscode.ExtensionContext) {
         }
 
         if (msg.selectHost) {
-            selectHost(provider, msg.selectHost.id, msg.selectHost.url, msg.selectHost.yjs_url);
+            if (!justLoaded) {
+                selectHost(provider, msg.selectHost.id, msg.selectHost.url, msg.selectHost.yjs_url);
+            }
+            justLoaded = false;
             // chost = msg.selectHost;
 
             // hostSocket = io(msg.selectHost, { path: "/socket.io" });
@@ -215,7 +238,7 @@ export function activate(context: vscode.ExtensionContext) {
         }
 
         if (msg.projects && hostSocket) {
-            provider.postMsg({projects: await hostSocket.emitWithAck("projects")});
+            provider.postMsg({ projects: await hostSocket.emitWithAck("projects") });
         }
 
         if (msg.newRoom) {
@@ -285,15 +308,15 @@ export function activate(context: vscode.ExtensionContext) {
             if (session) {
                 await authProvider.removeSession(session.id);
                 provider.postMsg({ loggedOut: true });
-                onSession(provider, undefined);
+                // onSession(provider, undefined);
 
-                socket.disconnect().connect();
+                // socket.disconnect().connect();
             }
         }
 
         if (msg.invite && cid && chost && cyjs) {
             await vscode.env.clipboard.writeText(inviteLink(croom ?? (cproject ?? ''), cid, chost, cyjs, cprojectId));
-            vscode.window.showInformationMessage("Invite link copied");
+            vscode.window.showInformationMessage("Invite link copied!");
         }
     });
 
@@ -358,6 +381,7 @@ async function selectHost(provider: SidebarProvider, hosti: number, host: string
     cid = hosti;
 
     if (hostSocket) {
+        hostSocket.removeAllListeners();
         hostSocket.disconnect();
         hostUser = null;
         provideUser(provider);
@@ -397,7 +421,7 @@ async function selectHost(provider: SidebarProvider, hosti: number, host: string
 
         if (project_id !== null) {
             const name = await hostSocket.emitWithAck("openProject", project_id, null);
-            
+
             if (!name) {
                 vscode.commands.executeCommand('workbench.action.closeFolder');
                 return;
@@ -415,8 +439,19 @@ async function selectHost(provider: SidebarProvider, hosti: number, host: string
 
     hostSocket.on("data", (name: string, colour: string, uuid: string | null) => {
         console.log(name, colour, uuid);
-        hostUser = {name, colour, uuid};
+        hostUser = { name, colour, uuid };
         provideUser(provider);
+    });
+
+    hostSocket.on("presence", (users: any[]) => {
+        presence = users;
+        provider.postMsg({ presence: users });
+    });
+
+    hostSocket.on("disconnect", () => {
+        if (cid !== null && chost !== null && cyjs !== null) {
+            selectHost(provider, cid, chost, cyjs, croom, cprojectId ? cprojectId + "" : null);
+        }
     });
 
     const initing = new Map<string, Promise<void>>();

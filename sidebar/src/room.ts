@@ -1,4 +1,6 @@
-import { state, switchPage, vscode } from "./global";
+import { page, state, switchPage, vscode } from "./global";
+
+const usersList = document.getElementById("room-users") as HTMLDivElement;
 
 const leaveBtn = document.getElementById("leave-room-btn") as HTMLButtonElement;
 
@@ -10,20 +12,38 @@ window.addEventListener("message", (event) => {
     const msg = event.data;
 
     if (msg.leftRoom) {
-        vscode.postMessage({ rooms: true });
         state.room = null;
         switchPage("rooms");
+        vscode.postMessage({ rooms: true });
     }
 
     if (msg.state) {
         const title = document.getElementById("room-title") as HTMLSpanElement;
         title.textContent = msg.state.room;
     }
+
+    if (msg.presence && page.v === "room") {
+        usersList.innerHTML = "";
+
+        for (const user of msg.presence) {
+            const div = document.createElement("div");
+            const name = document.createElement("span");
+            name.textContent = user.name;
+
+            div.style.setProperty("--colour", user.colour);
+
+            div.appendChild(name);
+
+            usersList.appendChild(div);
+        }
+    }
 });
 
 if (state.room !== null) {
     const title = document.getElementById("room-title") as HTMLSpanElement;
     title.textContent = state.room;
+
+    vscode.postMessage({presence: true});
 }
 
 const inviteBtn = document.getElementById("room-invite-btn") as HTMLButtonElement;

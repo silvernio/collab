@@ -43,6 +43,7 @@ window.addEventListener("message", (event) => {
 
     if (msg.newRoom) {
         openRoom(msg.newRoom);
+        vscode.postMessage({presence: true});
     }
 
     // if (msg.joinedRoom) {
@@ -51,6 +52,7 @@ window.addEventListener("message", (event) => {
 
     if (msg.state && msg.state.room !== null) {
         openRoom(msg.state.room);
+        vscode.postMessage({presence: true});
     }
 });
 

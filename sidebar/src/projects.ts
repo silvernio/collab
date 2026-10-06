@@ -42,6 +42,7 @@ window.addEventListener("message", (event) => {
     }
     if (msg.state && msg.state.project !== null) {
         openProject(msg.state.project);
+        vscode.postMessage({presence: true});
     }
 });
 
