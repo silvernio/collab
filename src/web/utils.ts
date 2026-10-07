@@ -30,9 +30,9 @@ export function genId(n: number) {
     return id;
 }
 
-export function inviteLink(name: string, hostId: number, host: string, yjsHost: string, projectId: number | null) {
-    const params = new URLSearchParams({ id: String(hostId), host, yjs_host: yjsHost });
-    if (projectId !== null) { params.set('project_id', String(projectId)); }
+export function inviteLink(name: string, hid: string, projectId: string | null) {
+    const params = new URLSearchParams({ hid });
+    if (projectId !== null) { params.set('pid', String(projectId)); }
 
     const folder = `collab://${encodeURIComponent(name.toLowerCase())}/${encodeURIComponent(name)}?${params}`;
     return `https://collab.silverspace.io/?folder=${encodeURIComponent(folder)}`;
@@ -70,5 +70,19 @@ function relative(from: string, to: string): string {
     const downParts = toParts.slice(i);
 
     return [...Array(upCount).fill('..'), ...downParts].join('/');
+}
+
+export function toLf(text: string) {
+    return text.replace(/\r\n?/g, '\n');
+}
+
+export function positionIn(text: string, offset: number) {
+    let line = 0;
+    let lineStart = 0;
+    for (let i = text.indexOf('\n'); i !== -1 && i < offset; i = text.indexOf('\n', i + 1)) {
+        line++;
+        lineStart = i + 1;
+    }
+    return new vscode.Position(line, offset - lineStart);
 }
 ///////////////////

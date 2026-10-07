@@ -18,6 +18,11 @@
     </svg>
     <!--  -->
 
+    <div id="imgs">
+        <img src="/private.png" id="private-img" alt="">
+        <img src="/public.png" id="public-img" alt="">
+    </div>
+
     <div id="account">
         <img src="/account.png" alt="">
         <span id="name"></span>
@@ -44,16 +49,22 @@
             <button class="back-btn" id="rooms-back-btn">Back</button>
             <button id="new-room-btn">New Room</button>
         </div>
-        <div class="list-tools">
-            <input class="tools-search" id="rooms-search" placeholder="search rooms" type="text">
+
+        <div class="list-div" id="public-rooms">
+            <h3>Public Rooms</h3>
+            <!-- <div class="list-tools">
+                <input class="tools-search" id="rooms-search" placeholder="search rooms" type="text">
+            </div> -->
+            <div class="list" id="public-rooms-list"></div>
         </div>
 
-        <div class="list" id="rooms-list"></div>
+        <!-- <p>To join private rooms, first open their invite links and then open in vscode.</p> -->
     </div>
 
     <div class="page" id="room">
         <div class="title">
             <h2 id="room-title"></h2>
+            <div id="room-visibility"></div>
             <button id="room-invite-btn"><img src="/invite.png" alt=""></button>
         </div>
 
@@ -69,17 +80,32 @@
         <div class="btns">
             <button class="back-btn" id="projects-back-btn">Back</button>
             <button id="new-project-btn">New Project</button>
-        </div>
-        <div class="list-tools">
-            <input class="tools-search" id="projects-search" placeholder="search projects" type="text">
+            <p id="new-project-guest">Login to create new projects!</p>
         </div>
 
-        <div class="list" id="projects-list"></div>
+        <div class="list-div" id="recent-projects">
+            <h3>Recent Projects</h3>
+            <!-- <div class="list-tools">
+                <input class="tools-search" id="recent-projects-search" placeholder="search projects" type="text">
+            </div> -->
+            <div class="list" id="recent-projects-list"></div>
+        </div>
+
+        <div class="list-div" id="public-projects">
+            <h3>Public Projects</h3>
+            <!-- <div class="list-tools">
+                <input class="tools-search" id="public-projects-search" placeholder="search projects" type="text">
+            </div> -->
+            <div class="list" id="public-projects-list"></div>
+        </div>
+
+        <p>To open private projects, first open their invite links.</p>
     </div>
 
     <div class="page" id="project">
         <div class="title">
             <h2 id="project-title"></h2>
+            <div id="project-visibility"></div>
             <button id="project-invite-btn"><img src="/invite.png" alt=""></button>
         </div>
         <div class="btns">

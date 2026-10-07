@@ -1,6 +1,7 @@
 import { state, switchPage, vscode } from "./global";
 
-const rooms = document.getElementById("rooms-list") as HTMLDivElement;
+const publicRoomsDiv = document.getElementById("public-rooms") as HTMLDivElement;
+const publicRooms = document.getElementById("public-rooms-list") as HTMLDivElement;
 
 const backBtn = document.getElementById("rooms-back-btn") as HTMLButtonElement;
 
@@ -17,34 +18,43 @@ newBtn.onpointerup = () => {
 window.addEventListener("message", (event) => {
     const msg = event.data;
     if (msg.rooms) {
-        rooms.innerHTML = "";
-        rooms.style.display = "none";
+        publicRooms.innerHTML = "";
+        publicRoomsDiv.classList.remove("show");
 
         for (const room of msg.rooms) {
-             rooms.style.display = "flex";
+            publicRoomsDiv.classList.add("show");
             const div = document.createElement("div");
 
             const name = document.createElement("span");
             name.textContent = room;
 
+            const right = document.createElement("div");
+            right.classList.add("right");
+
+            const visibility = document.getElementById("public-img")!.cloneNode();
+
             const joinBtn = document.createElement("button");
             joinBtn.textContent = "join";
+
+            right.appendChild(visibility);
+            right.appendChild(joinBtn);
 
             joinBtn.onpointerup = () => {
                 vscode.postMessage({ joinRoom: room });
             };
 
             div.appendChild(name);
-            div.appendChild(joinBtn);
+            div.appendChild(right);
+            // div.appendChild(joinBtn);
 
-            rooms.appendChild(div);
+            publicRooms.appendChild(div);
         }
     }
 
-    if (msg.newRoom) {
-        openRoom(msg.newRoom);
-        vscode.postMessage({presence: true});
-    }
+    // if (msg.newRoom) {
+    //     openRoom(msg.newRoom.name);
+    //     vscode.postMessage({ presence: true });
+    // }
 
     // if (msg.joinedRoom) {
     //     openRoom(msg.joinedRoom);
@@ -52,7 +62,7 @@ window.addEventListener("message", (event) => {
 
     if (msg.state && msg.state.room !== null) {
         openRoom(msg.state.room);
-        vscode.postMessage({presence: true});
+        vscode.postMessage({ presence: true });
     }
 });
 

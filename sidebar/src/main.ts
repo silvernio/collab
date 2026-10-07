@@ -39,8 +39,7 @@ window.addEventListener("message", (event) => {
         for (const host of msg.hosts) {
             const o = document.createElement("option");
             o.textContent = host.name;
-            o.value = JSON.stringify({ id: host.id, url: host.url, yjs_url: host.yjs_url });
-            console.log("v", o.value);
+            o.value = host.id;
 
             hosts.appendChild(o);
         }
@@ -48,9 +47,9 @@ window.addEventListener("message", (event) => {
         // hosts.value = "";
 
         if (state.host !== null) {
-            hosts.value = JSON.stringify(state.host);
+            hosts.value = state.host;
         } else {
-            hosts.value = JSON.stringify({ id: msg.hosts[0].id, url: msg.hosts[0].url, yjs_url: msg.hosts[0].yjs_url });
+            hosts.value = msg.hosts[0].id;
             (hosts as any).onchange();
         }
     }
@@ -60,7 +59,7 @@ window.addEventListener("message", (event) => {
     }
 
     if (msg.state) {
-        hosts.value = JSON.stringify(msg.state.host);
+        hosts.value = msg.state.host;
     }
 
     if (msg.user) {
@@ -82,10 +81,9 @@ hosts.onchange = () => {
         switchPage(null);
         return;
     }
-    const host = JSON.parse(hosts.value);
-    vscode.postMessage({ selectHost: host });
+    vscode.postMessage({ selectHost: hosts.value });
 
-    state.host = host;
+    state.host = hosts.value;
     vscode.setState(state);
 };
 

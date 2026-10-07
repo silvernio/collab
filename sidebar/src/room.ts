@@ -1,4 +1,4 @@
-import { page, state, switchPage, vscode } from "./global";
+import { state, switchPage, vscode } from "./global";
 
 const usersList = document.getElementById("room-users") as HTMLDivElement;
 
@@ -20,9 +20,14 @@ window.addEventListener("message", (event) => {
     if (msg.state) {
         const title = document.getElementById("room-title") as HTMLSpanElement;
         title.textContent = msg.state.room;
+
+        if (msg.state.visibility !== null) {
+            const visibility = document.getElementById("room-visibility") as HTMLDivElement;
+            visibility.innerHTML = document.getElementById(["private", "public"][msg.state.visibility] + "-img")?.outerHTML ?? "";
+        }
     }
 
-    if (msg.presence && page.v === "room") {
+    if (msg.presence) {
         usersList.innerHTML = "";
 
         for (const user of msg.presence) {
@@ -43,7 +48,12 @@ if (state.room !== null) {
     const title = document.getElementById("room-title") as HTMLSpanElement;
     title.textContent = state.room;
 
-    vscode.postMessage({presence: true});
+    vscode.postMessage({ presence: true });
+
+    if (state.visibility !== null) {
+        const visibility = document.getElementById("room-visibility") as HTMLDivElement;
+        visibility.innerHTML = document.getElementById(["private", "public"][state.visibility] + "-img")?.outerHTML ?? "";
+    }
 }
 
 const inviteBtn = document.getElementById("room-invite-btn") as HTMLButtonElement;

@@ -14,12 +14,15 @@ window.addEventListener("message", (event) => {
     if (msg.state) {
         const title = document.getElementById("project-title") as HTMLSpanElement;
         title.textContent = msg.state.project;
+
+        if (msg.state.visibility !== null) {
+            const visibility = document.getElementById("project-visibility") as HTMLDivElement;
+            visibility.innerHTML = document.getElementById(["private", "public"][msg.state.visibility] + "-img")?.outerHTML ?? "";
+        }
     }
 
     if (msg.presence && page.v === "project") {
         usersList.innerHTML = "";
-
-        console.log(msg.presence, "worked");
 
         for (const user of msg.presence) {
             const div = document.createElement("div");
@@ -43,7 +46,12 @@ if (state.project !== null) {
     const title = document.getElementById("project-title") as HTMLSpanElement;
     title.textContent = state.project;
 
-    vscode.postMessage({presence: true});
+    vscode.postMessage({ presence: true });
+
+    if (state.visibility !== null) {
+        const visibility = document.getElementById("project-visibility") as HTMLDivElement;
+        visibility.innerHTML = document.getElementById(["private", "public"][state.visibility] + "-img")?.outerHTML ?? "";
+    }
 }
 
 const inviteBtn = document.getElementById("project-invite-btn") as HTMLButtonElement;

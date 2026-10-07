@@ -1,6 +1,8 @@
 import { Socket } from 'socket.io-client';
 import * as vscode from 'vscode';
 
+export const maxSize = 50 * 1024 * 1024 - 4096;
+
 export class CollabFs implements vscode.FileSystemProvider {
     private _emitter = new vscode.EventEmitter<vscode.FileChangeEvent[]>();
     readonly onDidChangeFile = this._emitter.event;
@@ -113,6 +115,9 @@ export class CollabFs implements vscode.FileSystemProvider {
         });
     }
     async writeFile(uri: vscode.Uri, content: Uint8Array, options: { readonly create: boolean; readonly overwrite: boolean; }): Promise<void> {
+        if (content.byteLength > maxSize) {
+            throw vscode.FileSystemError.NoPermissions("file too large");
+        }
         await this.ready;
         await this.requestWriteFile(this.toRoomPath(uri), content, options);
         return;

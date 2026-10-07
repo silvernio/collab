@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
 import { SidebarProvider } from './panel';
 import { io, Socket } from 'socket.io-client';
-import { CollabFs } from './files';
+import { CollabFs, maxSize } from './files';
 import { createDirectory, deleteFile, getAbsoluteUri, getFileStats, readDirectory, readFile, renameFile, writeFile } from './host';
-import { genId, getRelativePath, inviteLink, waitSync } from './utils';
+import { genId, getRelativePath, inviteLink, toLf, waitSync } from './utils';
 import { SyncedFile } from './sync';
 
 import * as Y from 'yjs';
@@ -14,12 +14,14 @@ import { AuthProvider, providerId } from './authProvider';
 let socket: Socket;
 
 let hostSocket: Socket;
-let chost: string | null = null;
-let cid: number | null = null;
+let chid: string | null = null;
 let cyjs: string | null = null;
+// let chost: string | null = null;
+// let cid: number | null = null;
 let croom: string | null = null;
 let cproject: string | null = null;
-let cprojectId: number | null = null;
+let cprojectName: string | null = null;
+let cvisibility: number | null = null;
 let isHost = false;
 
 let collabFs: CollabFs | null = null;
@@ -97,25 +99,19 @@ export function activate(context: vscode.ExtensionContext) {
 
     let first = true;
     socket.on("connect", () => {
-        if (!first && cid !== null && chost !== null && cyjs !== null) {
-            selectHost(provider, cid, chost, cyjs, croom, cprojectId ? cprojectId + "" : null);
+        if (!first && chid !== null) {
+            selectHost(provider, chid, croom, cproject);
         }
 
         const folder = vscode.workspace.workspaceFolders?.[0];
         if (first && folder?.uri.scheme === 'collab') {
             const params = new URLSearchParams(folder.uri.query);
-            const wid = params.get('id');
-            const whost = params.get('host');
-            const wyjs = params.get('yjs_host');
-            const projectId = params.get('project_id');
+            const hid = params.get('hid');
+            const projectId = params.get('pid');
             const room = decodeURIComponent(folder.uri.authority);
 
-            // vscode.window.showInformationMessage(`loading room: ${room}, ${projectId}`);
-
-
-
-            if (whost !== null && wyjs !== null && wid !== null) {
-                selectHost(provider, parseInt(wid), whost, wyjs, projectId === null ? room : null, projectId);
+            if (hid !== null) {
+                selectHost(provider, hid, projectId === null ? room : null, projectId);
                 justLoaded = true;
             }
         }
@@ -151,13 +147,8 @@ export function activate(context: vscode.ExtensionContext) {
     let justLoaded = false;
 
     provider.msgCallbacks.push(async (msg) => {
-        if (msg.ready) {
-            if (chost !== null && croom !== null && cid !== null) {
-                provider.postMsg({ state: { host: { id: cid, url: chost, yjs_url: cyjs }, project: null, room: croom, page: "rooms" } });
-            }
-            if (chost !== null && cproject !== null && cid !== null) {
-                provider.postMsg({ state: { host: { id: cid, url: chost, yjs_url: cyjs }, project: cproject, room: null, page: "projects" } });
-            }
+        if (msg.ready && chid && (croom !== null || cprojectName !== null)) {
+            provider.postMsg({ state: { host: chid, room: croom, project: cprojectName, visibility: cvisibility, page: croom !== null ? "rooms" : "projects" } });
         }
 
         if (msg.presence) {
@@ -183,13 +174,13 @@ export function activate(context: vscode.ExtensionContext) {
             // context.globalState.update("host", chost);
             // context.globalState.update("yjs_host", cyjs);
             // context.globalState.update("room", msg.joinRoom);
-            const workspaceUri = vscode.Uri.parse(`${FILE_SYSTEM_SCHEME}://${encodeURIComponent(msg.joinRoom)}/${encodeURIComponent(msg.joinRoom)}`).with({ query: new URLSearchParams({ id: cid?.toString() ?? "", host: chost ?? "", yjs_host: cyjs ?? "" }).toString() });
+            const workspaceUri = vscode.Uri.parse(`${FILE_SYSTEM_SCHEME}://${encodeURIComponent(msg.joinRoom)}/${encodeURIComponent(msg.joinRoom)}`).with({ query: new URLSearchParams({ hid: chid ?? "" }).toString() });
             vscode.commands.executeCommand('vscode.openFolder', workspaceUri, { forceNewWindow: false });
         }
 
         if (msg.selectHost) {
             if (!justLoaded) {
-                selectHost(provider, msg.selectHost.id, msg.selectHost.url, msg.selectHost.yjs_url);
+                selectHost(provider, msg.selectHost);
             }
             justLoaded = false;
             // chost = msg.selectHost;
@@ -216,9 +207,14 @@ export function activate(context: vscode.ExtensionContext) {
                 placeHolder: "name",
             });
 
-            if (name !== undefined) {
+            const visibility = await vscode.window.showQuickPick(
+                [{ label: "private", description: "only those who have the link or have opened the project can join" }, { label: "public", description: "anyone can join" }],
+                { title: "What's its visibility?", placeHolder: "visibility" },
+            );
+
+            if (name !== undefined && visibility !== undefined) {
                 if (hostSocket) {
-                    const id: number | null = await hostSocket.emitWithAck("newProject", name);
+                    const id: string | null = await hostSocket.emitWithAck("newProject", name, ["private", "public"].indexOf(visibility.label));
 
                     if (id !== null && name !== undefined) {
                         openProject(id, name);
@@ -245,24 +241,31 @@ export function activate(context: vscode.ExtensionContext) {
             // vscode.window.showInformationMessage(`you want a new room!`);
 
             const name = await vscode.window.showInputBox({
-                prompt: "What's the name of the room?",
+                title: "What's the name of the room?",
                 placeHolder: "name",
             });
 
-            if (name !== undefined) {
-                // context.globalState.update("host", chost);
-                // context.globalState.update("room", name);
-                // const workspaceUri = vscode.Uri.parse(`${FILE_SYSTEM_SCHEME}://collab/${name}/`);
-                // vscode.commands.executeCommand('vscode.openFolder', workspaceUri, { forceNewWindow: false });
-                if (hostSocket) {
-                    hostSocket.emit("newRoom", name, (_success: boolean) => {
-                        // vscode.window.showInformationMessage(`new room! ${success}`);
-                        croom = name;
-                        provider.postMsg({ newRoom: name });
-                        isHost = true;
-                        openDocuments();
-                    });
-                }
+            const visibility = await vscode.window.showQuickPick(
+                [{ label: "private", description: "only those who have the link can join" }, { label: "public", description: "anyone can join" }],
+                { title: "What's its visibility?", placeHolder: "visibility" },
+            );
+
+            if (name !== undefined && visibility !== undefined && hostSocket) {
+                const v = ["private", "public"].indexOf(visibility.label);
+                hostSocket.emit("newRoom", name, v, (success: boolean) => {
+                    if (!success) {
+                        vscode.window.showInformationMessage("new room failed");
+                        return;
+                    }
+                    // vscode.window.showInformationMessage(`new room! ${success}`);
+                    croom = name;
+                    cvisibility = v;
+                    provider.postMsg({ state: { host: chid, room: croom, project: cprojectName, visibility: cvisibility, page: "rooms" } });
+                    // provider.postMsg({ newRoom: {name, visibility: v} });
+                    isHost = true;
+
+                    openDocuments();
+                });
             }
         }
 
@@ -314,8 +317,8 @@ export function activate(context: vscode.ExtensionContext) {
             }
         }
 
-        if (msg.invite && cid && chost && cyjs) {
-            await vscode.env.clipboard.writeText(inviteLink(croom ?? (cproject ?? ''), cid, chost, cyjs, cprojectId));
+        if (msg.invite && chid) {
+            await vscode.env.clipboard.writeText(inviteLink(croom ?? (cprojectName ?? ''), chid, cproject));
             vscode.window.showInformationMessage("Invite link copied!");
         }
     });
@@ -351,14 +354,14 @@ export function activate(context: vscode.ExtensionContext) {
 
     //
 
-    context.subscriptions.push(
-        vscode.workspace.onDidSaveTextDocument((document) => {
-            if ((!croom && !cproject) || !hostSocket) { return; }
-            const file = getRelativePath(document.uri);
-            if (!file) { return; }
-            hostSocket.emit('saveFile', file);
-        }),
-    );
+    // context.subscriptions.push(
+    //     vscode.workspace.onDidSaveTextDocument((document) => {
+    //         if ((!croom && !cprojectName) || !hostSocket) { return; }
+    //         const file = getRelativePath(document.uri);
+    //         if (!file) { return; }
+    //         hostSocket.emit('saveFile', file);
+    //     }),
+    // );
 
     //
 
@@ -375,10 +378,8 @@ export function activate(context: vscode.ExtensionContext) {
     console.log('Collab started');
 }
 
-async function selectHost(provider: SidebarProvider, hosti: number, host: string, yjs_host: string, room: string | null = null, project_id: string | null = null) {
-    chost = host;
-    cyjs = yjs_host;
-    cid = hosti;
+async function selectHost(provider: SidebarProvider, hid: string, room: string | null = null, project_id: string | null = null) {
+    chid = hid;
 
     if (hostSocket) {
         hostSocket.removeAllListeners();
@@ -387,30 +388,27 @@ async function selectHost(provider: SidebarProvider, hosti: number, host: string
         provideUser(provider);
     }
 
-    const token: string | null = await socket.emitWithAck("joinHost", hosti);
+    const { url, yjs_url, token }: { url: string | null, yjs_url: string | null, token: string | null } = await socket.emitWithAck("joinHost", hid);
+    cyjs = yjs_url;
 
-    hostSocket = io(host, { path: "/socket.io", auth: token ? { token } : undefined });
+    if (!url || !yjs_url) { return; }
+
+    hostSocket = io(url, { path: "/socket.io", auth: token ? { token } : undefined });
 
     hostSocket.on("connect", async () => {
-        // vscode.window.showInformationMessage(`connected to host!: ${host}`);
-
         provider.postMsg({ hostConnected: true });
 
-        hostSocket.emit("projects", (projects: any[]) => {
-            // vscode.window.showInformationMessage(`all projects: ${JSON.stringify(projects)}`);
-            provider.postMsg({ projects });
-        });
-
         if (room !== null) {
-            hostSocket.emit("joinRoom", room, (success: boolean) => {
-                if (success === false) {
+            hostSocket.emit("joinRoom", room, (visibility: number | null) => {
+                if (visibility === null) {
                     vscode.commands.executeCommand('workbench.action.closeFolder');
                     return;
                 }
 
                 // vscode.window.showInformationMessage(`joined room: ${room}`);
                 croom = room;
-                provider.postMsg({ state: { host: { id: cid, url: chost, yjs_url: cyjs }, room: croom, project: cproject, page: "rooms" } });
+                cvisibility = visibility;
+                provider.postMsg({ state: { host: chid, room: croom, project: cprojectName, visibility: cvisibility, page: "rooms" } });
                 // provider.postMsg({ joinedRoom: room });
 
                 if (collabFs !== null) { collabFs.setSocket(hostSocket); }
@@ -420,16 +418,17 @@ async function selectHost(provider: SidebarProvider, hosti: number, host: string
         }
 
         if (project_id !== null) {
-            const name = await hostSocket.emitWithAck("openProject", project_id, null);
+            const { name, visibility }: { name: string | null, visibility: number | null } = await hostSocket.emitWithAck("openProject", project_id);
 
-            if (!name) {
+            if (!name || visibility === null) {
                 vscode.commands.executeCommand('workbench.action.closeFolder');
                 return;
             }
 
-            cproject = name;
-            cprojectId = parseInt(project_id);
-            provider.postMsg({ state: { host: { id: cid, url: chost, yjs_url: cyjs }, room: croom, project: cproject, page: "rooms" } });
+            cprojectName = name;
+            cproject = project_id;
+            cvisibility = visibility;
+            provider.postMsg({ state: { host: chid, room: croom, project: cprojectName, visibility: cvisibility, page: "rooms" } });
 
             if (collabFs !== null) { collabFs.setSocket(hostSocket); }
 
@@ -449,8 +448,8 @@ async function selectHost(provider: SidebarProvider, hosti: number, host: string
     });
 
     hostSocket.on("disconnect", () => {
-        if (cid !== null && chost !== null && cyjs !== null) {
-            selectHost(provider, cid, chost, cyjs, croom, cprojectId ? cprojectId + "" : null);
+        if (chid !== null) {
+            selectHost(provider, chid, croom, cproject);
         }
     });
 
@@ -472,7 +471,7 @@ async function selectHost(provider: SidebarProvider, hosti: number, host: string
         if (!pending) {
             pending = (async () => {
                 const doc = new Y.Doc();
-                const provider = new WebsocketProvider(yjs_host, id, doc);
+                const provider = new WebsocketProvider(yjs_url, id, doc);
                 initConns.set(id, { p: provider, d: doc });
                 const ytext = doc.getText('content');
 
@@ -483,7 +482,7 @@ async function selectHost(provider: SidebarProvider, hosti: number, host: string
                 if (!meta.get('seeded')) {
                     const bytes = await readFile(uri);
                     doc.transact(() => {
-                        ytext.insert(0, new TextDecoder().decode(bytes));
+                        ytext.insert(0, toLf(new TextDecoder().decode(bytes)));
                         meta.set('seeded', true);
                     }, {});
                 }
@@ -525,7 +524,8 @@ async function selectHost(provider: SidebarProvider, hosti: number, host: string
         callback(await readDirectory(uri));
     });
     hostSocket.on('readFile', async (uri: string, callback) => {
-        callback(await readFile(uri));
+        const content = await readFile(uri);
+        callback(content && content.byteLength > maxSize ? undefined : content);
     });
 
     hostSocket.on('createDirectory', async (uri: string, callback) => {
@@ -563,8 +563,8 @@ async function selectHost(provider: SidebarProvider, hosti: number, host: string
 
 //
 
-function openProject(id: number, name: string) {
-    const workspaceUri = vscode.Uri.parse(`${FILE_SYSTEM_SCHEME}://${encodeURIComponent(name)}/${encodeURIComponent(name)}`).with({ query: new URLSearchParams({ id: cid?.toString() ?? "", host: chost ?? "", yjs_host: cyjs ?? "", project_id: id + "" }).toString() });
+function openProject(id: string, name: string) {
+    const workspaceUri = vscode.Uri.parse(`${FILE_SYSTEM_SCHEME}://${encodeURIComponent(name)}/${encodeURIComponent(name)}`).with({ query: new URLSearchParams({ hid: chid ?? "", pid: id }).toString() });
     vscode.commands.executeCommand('vscode.openFolder', workspaceUri, { forceNewWindow: false });
 }
 
@@ -587,23 +587,41 @@ function openDocuments() {
     }
 }
 
+const opening = new Set<string>();
+
 function openDocument(document: vscode.TextDocument) {
     const path = document.uri.toString();
-    if (synced.has(path)) { return; }
+    if (synced.has(path) || opening.has(path)) { return; }
 
     const file = getRelativePath(document.uri);
-    if (!file || (!croom && !cproject) || !cyjs || !hostSocket) { return; }
+    if (!file || (!croom && !cprojectName) || !cyjs || !hostSocket) { return; }
+
+    opening.add(path);
 
     hostSocket.emit('openFile', file, async (id: string, wasInit: boolean) => {
-        if (!cyjs) { return; }
+        let s: SyncedFile | undefined;
+        try {
+            if (!cyjs) { return; }
+            if (document.isClosed) {
+                hostSocket.emit('closeFile', file, () => { });
+                return;
+            }
+            s = await SyncedFile.create(hostSocket, cyjs, id, document, hostSocket.id ?? "none");
+        } finally {
+            opening.delete(path);
+        }
+
+        if (wasInit) { hostSocket.emit("connectedFile", id); }
+
         if (document.isClosed) {
-            hostSocket.emit('closeFile', file, () => { });
+            s.dispose();
+            hostSocket.emit("closeFile", file, () => {});
+            const reopened = vscode.workspace.textDocuments.find((d) => d.uri.toString() === path);
+            if (reopened) { openDocument(reopened); }
             return;
         }
 
-        synced.set(path, await SyncedFile.create(hostSocket, cyjs, id, document, hostSocket.id ?? "none"));
-
-        if (wasInit) { hostSocket.emit("connectedFile", id); }
+        synced.set(path, s);
     });
 }
 

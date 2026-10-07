@@ -2,7 +2,7 @@
 
 This extension allows you to code collaborate with others in realtime!
 
-**everything is under heavy development so expect random bugs*
+It supports quick room creation and invite links that work in the browser. And for larger & longer term use cases, projects allow the code to be stored on the server, so anyone can open the project at any time, even while the host is offline.
 
 ### Features
 - Create rooms
@@ -12,6 +12,11 @@ This extension allows you to code collaborate with others in realtime!
 - See other's cursors
 - Login and identify others
 - Create & open projects
+- Realtime user lists
+- Create & Use invite links
+- Collaborate in the browser
+- Set room / project visibility
+- Open recent projects
 
 ## How to use
 - Open the collab sidebar tab, it's the 3 people icon thing
@@ -25,15 +30,28 @@ This extension allows you to code collaborate with others in realtime!
 - Open rooms
 - Create a room and provide a name
 
+### For projects
+- It's essentially the same as rooms
+- Except, you do have to login to create projects & view recent ones
+
 ### To signup / login
 - Click the Signup / Login button
 - Login at auth.silverspace.io as it requests
 - Look back at vscode, magic
 
+### To invite someone
+- Click the little invite button, the one with person and a plus
+- Send them the link it should've copied
+
+### To open a private project in desktop
+- First, open it through it's invite link
+- Then, go to projects in desktop
+- It should be in recent projects
+
 ---
 
 ### Known bugs
-- Opening non-text files like .pngs and .gifs closes the room (projects work fine)
-- Typing at the same time as someone else occasionally duplicates / discards text
-- Renaming / moving files & folders doesn't work as a client (projects work fine)
-- Saving files occasionally brings up conflict popups - just overwrite for now
+- I fixed them all! well at least the ones i know
+- If you find anymore, pls let me know
+
+*even though this project is quite stable, it's still under development, and so new updates (and bugs) are frequent at the moment*

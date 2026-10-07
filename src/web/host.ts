@@ -157,15 +157,16 @@ export async function renameFile(
     options: { readonly overwrite: boolean; }
 ): Promise<boolean> {
     const absoluteUri = getAbsoluteUri(relativePath);
+    const targetUri = getAbsoluteUri(newUri);
 
-    if (!absoluteUri) {
+    if (!absoluteUri || !targetUri) {
         // vscode.window.showErrorMessage('No workspace folder open to resolve the relative path.');
         return false;
     }
 
     try {
         // Parse the new URI string into a Uri object
-        const targetUri = vscode.Uri.parse(newUri);
+        // const targetUri = vscode.Uri.parse(newUri);
 
         // Rename/move the file using the workspace FileSystem API
         await vscode.workspace.fs.rename(absoluteUri, targetUri, options);
