@@ -9,7 +9,7 @@ It supports quick room creation and invite links that work in the browser. And f
 - Join rooms
 - Browse & manage room files
 - Edit files at the same time
-- See other's cursors
+- See other's cursors & selections
 - Login and identify others
 - Create & open projects
 - Realtime user lists
@@ -29,6 +29,7 @@ It supports quick room creation and invite links that work in the browser. And f
 - First, open the folder that you want to share
 - Open rooms
 - Create a room and provide a name
+- Choose private or public
 
 ### For projects
 - It's essentially the same as rooms

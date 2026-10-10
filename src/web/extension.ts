@@ -13,7 +13,7 @@ import { AuthProvider, providerId } from './authProvider';
 
 let socket: Socket;
 
-let hostSocket: Socket;
+let hostSocket: Socket | null = null;
 let chid: string | null = null;
 let cyjs: string | null = null;
 // let chost: string | null = null;
@@ -281,6 +281,7 @@ export function activate(context: vscode.ExtensionContext) {
                     s.dispose();
                 }
                 synced.clear();
+                opening.clear();
                 // cfile = null;
             });
         }
@@ -381,9 +382,10 @@ export function activate(context: vscode.ExtensionContext) {
 async function selectHost(provider: SidebarProvider, hid: string, room: string | null = null, project_id: string | null = null) {
     chid = hid;
 
-    if (hostSocket) {
+    if (hostSocket !== null) {
         hostSocket.removeAllListeners();
         hostSocket.disconnect();
+        hostSocket = null;
         hostUser = null;
         provideUser(provider);
     }
@@ -391,12 +393,27 @@ async function selectHost(provider: SidebarProvider, hid: string, room: string |
     const { url, yjs_url, token }: { url: string | null, yjs_url: string | null, token: string | null } = await socket.emitWithAck("joinHost", hid);
     cyjs = yjs_url;
 
-    if (!url || !yjs_url) { return; }
+    if (!url || !yjs_url || hostSocket !== null) { return; }
 
-    hostSocket = io(url, { path: "/socket.io", auth: token ? { token } : undefined });
+    let first = true;
+    hostSocket = io(url, {
+        path: "/socket.io", auth: (cb) => {
+            let ifirst = first;
+            first = false;
+            if (ifirst) {
+                cb({ token: token ? token : undefined });
+            } else {
+                socket.timeout(5000).emitWithAck("joinHost", hid).then((data) => {
+                    cb({ token: data.token ? data.token : undefined });
+                }).catch(() => cb({}));
+            }
+        }
+    });
 
     hostSocket.on("connect", async () => {
         provider.postMsg({ hostConnected: true });
+
+        if (hostSocket === null) { return; }
 
         if (room !== null) {
             hostSocket.emit("joinRoom", room, (visibility: number | null) => {
@@ -411,7 +428,7 @@ async function selectHost(provider: SidebarProvider, hid: string, room: string |
                 provider.postMsg({ state: { host: chid, room: croom, project: cprojectName, visibility: cvisibility, page: "rooms" } });
                 // provider.postMsg({ joinedRoom: room });
 
-                if (collabFs !== null) { collabFs.setSocket(hostSocket); }
+                if (collabFs !== null && hostSocket !== null) { collabFs.setSocket(hostSocket); }
 
                 openDocuments();
             });
@@ -447,11 +464,11 @@ async function selectHost(provider: SidebarProvider, hid: string, room: string |
         provider.postMsg({ presence: users });
     });
 
-    hostSocket.on("disconnect", () => {
-        if (chid !== null) {
-            selectHost(provider, chid, croom, cproject);
-        }
-    });
+    // hostSocket.on("disconnect", () => {
+    //     if (chid !== null) {
+    //         selectHost(provider, chid, croom, cproject);
+    //     }
+    // });
 
     const initing = new Map<string, Promise<void>>();
     const initConns = new Map<string, { p: WebsocketProvider, d: Y.Doc }>();
@@ -581,6 +598,11 @@ vscode.workspace.onDidOpenTextDocument(async (document) => {
 });
 
 function openDocuments() {
+    for (const s of synced.values()) {
+        s.dispose();
+    }
+    synced.clear();
+    opening.clear();
     for (const document of vscode.workspace.textDocuments) {
         if (document.isUntitled) { continue; }
         openDocument(document);
@@ -601,7 +623,7 @@ function openDocument(document: vscode.TextDocument) {
     hostSocket.emit('openFile', file, async (id: string, wasInit: boolean) => {
         let s: SyncedFile | undefined;
         try {
-            if (!cyjs) { return; }
+            if (!cyjs || hostSocket === null) { return; }
             if (document.isClosed) {
                 hostSocket.emit('closeFile', file, () => { });
                 return;
@@ -615,7 +637,7 @@ function openDocument(document: vscode.TextDocument) {
 
         if (document.isClosed) {
             s.dispose();
-            hostSocket.emit("closeFile", file, () => {});
+            hostSocket.emit("closeFile", file, () => { });
             const reopened = vscode.workspace.textDocuments.find((d) => d.uri.toString() === path);
             if (reopened) { openDocument(reopened); }
             return;
@@ -632,7 +654,7 @@ vscode.workspace.onDidCloseTextDocument((document) => {
     synced.delete(path);
     s.dispose();
     const file = getRelativePath(document.uri);
-    if (file) { hostSocket.emit('closeFile', file, () => { }); }
+    if (file && hostSocket !== null) { hostSocket.emit('closeFile', file, () => { }); }
 });
 
 // let cfile: string | null = null;
