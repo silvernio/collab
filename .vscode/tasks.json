@@ -1,5 +1,3 @@
-// See https://go.microsoft.com/fwlink/?LinkId=733558
-// for the documentation about the tasks.json format
 {
 	"version": "2.0.0",
 	"tasks": [
@@ -10,28 +8,16 @@
 				"kind": "build",
 				"isDefault": true
 			},
-			"problemMatcher": [
-				"$ts-webpack",
-				"$tslint-webpack"
-			]
+			"problemMatcher": ["$ts-webpack", "$tslint-webpack"]
 		},
 		{
 			"type": "npm",
 			"script": "watch-web",
 			"group": "build",
 			"isBackground": true,
-			"problemMatcher": [
-				"$ts-webpack-watch",
-				"$tslint-webpack-watch"
-			]
+			"problemMatcher": ["$ts-webpack-watch", "$tslint-webpack-watch"]
 		},
 		{
-			// Opens a SECOND, fully independent VS Code instance running the
-			// extension. Must go through the `code` CLI with its own
-			// --user-data-dir: VS Code ignores --user-data-dir when it is set
-			// in a launch.json "args" array (microsoft/vscode#126737), so a
-			// compound of two extensionHost debug configs just reloads the
-			// first Extension Development Host instead of opening a second.
 			"label": "open-peer-2-window",
 			"type": "process",
 			"command": "code",
@@ -49,13 +35,9 @@
 			}
 		},
 		{
-			// preLaunchTask for "Peer 1": build once, then pop the Peer 2 window.
 			"label": "peers: build + open peer 2",
 			"dependsOrder": "sequence",
-			"dependsOn": [
-				"npm: compile-web",
-				"open-peer-2-window"
-			],
+			"dependsOn": ["npm: compile-web", "open-peer-2-window"],
 			"problemMatcher": []
 		}
 	]

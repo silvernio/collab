@@ -1,58 +1,58 @@
 body {
-  background-color: transparent;
-  color: var(--vscode-foreground);
-  font-family: var(--vscode-font-family);
-  font-size: var(--vscode-font-size);
-  padding-top: 8px;
+	background-color: transparent;
+	color: var(--vscode-foreground);
+	font-family: var(--vscode-font-family);
+	font-size: var(--vscode-font-size);
+	padding-top: 8px;
 }
 
 button {
-  font-family: var(--vscode-font-family);
-  background-color: var(--vscode-button-background);
-  color: var(--vscode-button-foreground);
-  border: none;
-  padding: 4px 12px;
-  border-radius: 4px;
-  border: 1px solid var(--vscode-button-border, transparent);
+	font-family: var(--vscode-font-family);
+	background-color: var(--vscode-button-background);
+	color: var(--vscode-button-foreground);
+	border: none;
+	padding: 4px 12px;
+	border-radius: 4px;
+	border: 1px solid var(--vscode-button-border, transparent);
 }
 
 button:hover {
-  background-color: var(--vscode-button-hoverBackground);
+	background-color: var(--vscode-button-hoverBackground);
 }
 
 input,
 textarea {
-  font-family: var(--vscode-font-family);
-  background-color: var(--vscode-input-background);
-  color: var(--vscode-input-foreground);
-  border: 1px solid var(--vscode-input-border, transparent);
-  border-radius: 4px;
+	font-family: var(--vscode-font-family);
+	background-color: var(--vscode-input-background);
+	color: var(--vscode-input-foreground);
+	border: 1px solid var(--vscode-input-border, transparent);
+	border-radius: 4px;
 }
 
 a {
-  color: var(--vscode-textLink-foreground);
+	color: var(--vscode-textLink-foreground);
 }
 
 a:hover {
-  color: var(--vscode-textLink-activeForeground);
+	color: var(--vscode-textLink-activeForeground);
 }
 
 select {
-  font-family: var(--vscode-font-family);
-  background-color: var(--vscode-dropdown-background);
-  color: var(--vscode-dropdown-foreground);
-  border: 1px solid var(--vscode-dropdown-border);
-  border-radius: 4px;
+	font-family: var(--vscode-font-family);
+	background-color: var(--vscode-dropdown-background);
+	color: var(--vscode-dropdown-foreground);
+	border: 1px solid var(--vscode-dropdown-border);
+	border-radius: 4px;
 }
 
 select:focus {
-  outline: 1px solid var(--vscode-focusBorder);
-  outline-offset: -1px;
+	outline: 1px solid var(--vscode-focusBorder);
+	outline-offset: -1px;
 }
 
 select option {
-  background-color: var(--vscode-dropdown-listBackground);
-  color: var(--vscode-dropdown-foreground);
+	background-color: var(--vscode-dropdown-listBackground);
+	color: var(--vscode-dropdown-foreground);
 }
 
 /* */
@@ -60,201 +60,209 @@ select option {
 /* */
 
 .back-btn {
-  background: var(--vscode-button-secondaryBackground);
-  color: var(--vscode-button-secondaryForeground);
+	background: var(--vscode-button-secondaryBackground);
+	color: var(--vscode-button-secondaryForeground);
 }
 
 .back-btn:hover {
-  background: var(--vscode-button-secondaryHoverBackground);
+	background: var(--vscode-button-secondaryHoverBackground);
 }
 
-#account button, .title button {
-  background: transparent;
-  color: var(--vscode-icon-foreground);
+#account button,
+.title button {
+	background: transparent;
+	color: var(--vscode-icon-foreground);
 }
 
-#account button:hover, .title button:hover {
-  background: var(--vscode-toolbar-hoverBackground);
+#account button:hover,
+.title button:hover {
+	background: var(--vscode-toolbar-hoverBackground);
 }
 
 #imgs {
-  display: none;
+	display: none;
 }
 
 .btns {
-  display: flex;
-  margin-top: 15px;
-  gap: 10px;
-  flex-direction: column;
+	display: flex;
+	margin-top: 15px;
+	gap: 10px;
+	flex-direction: column;
 }
 
 .list-div {
-  display: none;
-  flex-direction: column;
+	display: none;
+	flex-direction: column;
 }
 
 .list-div.show {
-  display: flex;
+	display: flex;
 }
 
 .list {
-  margin-top: 5px;
-  display: flex;
-  /* display: none; */
-  flex-direction: column;
-  gap: 5px;
-  padding: 5px;
-  /* background-color: color-mix(in srgb, var(--vscode-sideBar-background) 80%, #ffffffcc 20%); */
-  border: 1px solid var(--vscode-widget-border, transparent);
-  background-color: var(--vscode-editorWidget-background, transparent);
-  border-radius: 4px;
+	margin-top: 5px;
+	display: flex;
+	/* display: none; */
+	flex-direction: column;
+	gap: 5px;
+	padding: 5px;
+	/* background-color: color-mix(in srgb, var(--vscode-sideBar-background) 80%, #ffffffcc 20%); */
+	border: 1px solid var(--vscode-widget-border, transparent);
+	background-color: var(--vscode-editorWidget-background, transparent);
+	border-radius: 4px;
 }
 
 .list div {
-  display: flex;
-  flex-direction: row;
-  gap: 5px;
-  padding-left: 5px;
-  width: calc(100% - 5px);
-  height: 30px;
-  /* background-color: color-mix(in srgb, var(--vscode-sideBar-background) 80%, #ffffffcc 30%); */
-  align-items: center;
-  position: relative;
-  border-radius: 4px;
-  background: none;
+	display: flex;
+	flex-direction: row;
+	gap: 5px;
+	padding-left: 5px;
+	width: calc(100% - 5px);
+	height: 30px;
+	/* background-color: color-mix(in srgb, var(--vscode-sideBar-background) 80%, #ffffffcc 30%); */
+	align-items: center;
+	position: relative;
+	border-radius: 4px;
+	background: none;
 }
 
 .list > div {
-  border: 1px solid var(--vscode-widget-border, transparent);
-  background-color: var(--vscode-editorWidget-background, transparent);
+	border: 1px solid var(--vscode-widget-border, transparent);
+	background-color: var(--vscode-editorWidget-background, transparent);
 }
 
 .list:not(.users-list) > div:hover {
-  background: var(--vscode-list-hoverBackground);
-  color: var(--vscode-list-hoverForeground, inherit);
+	background: var(--vscode-list-hoverBackground);
+	color: var(--vscode-list-hoverForeground, inherit);
 }
 
-.list >div>.right {
-  width: 100px;
-  position: absolute;
-  right: 5px;
-  display: flex;
-  align-items: center;
-  justify-content: end;
+.list > div > .right {
+	width: 100px;
+	position: absolute;
+	right: 5px;
+	display: flex;
+	align-items: center;
+	justify-content: end;
 }
 
 .list div button {
-  height: 24px;
-  padding-top: 1px;
+	height: 24px;
+	padding-top: 1px;
 }
 
 .list div img {
-  width: 20px;
-  height: 20px;
+	width: 20px;
+	height: 20px;
 }
 
 .page {
-  opacity: 0;
-  pointer-events: none;
-  position: absolute;
-  width: calc(100% - 40px);
-  /* transition: opacity 0.2s ease; */
+	opacity: 0;
+	pointer-events: none;
+	position: absolute;
+	width: calc(100% - 40px);
+	/* transition: opacity 0.2s ease; */
 }
 
 .page.show {
-  opacity: 1;
-  pointer-events: auto;
+	opacity: 1;
+	pointer-events: auto;
 }
 
 .tools-search {
-  opacity: 0;
+	opacity: 0;
 }
 
 #account {
-  display: flex;
-  flex-direction: row;
-  gap: 5px;
-  /* background-color: color-mix(in srgb, var(--vscode-sideBar-background) 80%, #ffffffcc 20%); */
-  margin-bottom: 15px;
-  position: relative;
-  height: 30px;
-  align-items: center;
-  border-radius: 4px;
-  border: 1px solid var(--vscode-widget-border, transparent);
-  background-color: var(--vscode-editorWidget-background, transparent);
+	display: flex;
+	flex-direction: row;
+	gap: 5px;
+	/* background-color: color-mix(in srgb, var(--vscode-sideBar-background) 80%, #ffffffcc 20%); */
+	margin-bottom: 15px;
+	position: relative;
+	height: 30px;
+	align-items: center;
+	border-radius: 4px;
+	border: 1px solid var(--vscode-widget-border, transparent);
+	background-color: var(--vscode-editorWidget-background, transparent);
 }
 
-#account>img {
-  width: 15px;
-  height: 20px;
-  position: absolute;
-  left: 5px;
-  filter: url(#filter);
+#account > img {
+	width: 15px;
+	height: 20px;
+	position: absolute;
+	left: 5px;
+	filter: url(#filter);
 }
 
-#account>span {
-  position: absolute;
-  left: 28px;
+#account > span {
+	position: absolute;
+	left: 28px;
 }
 
 #account button {
-  height: 25px;
-  display: none;
-  position: absolute;
-  right: 2.5px;
-  max-width: 25px;
+	height: 25px;
+	display: none;
+	position: absolute;
+	right: 2.5px;
+	max-width: 25px;
 }
 
 #account button.show {
-  display: block;
+	display: block;
 }
 
-#account button>img,
-.title button>img {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 100%;
-  /* height: 100; */
-  scale: 0.8;
+#account button > img,
+.title button > img {
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 100%;
+	/* height: 100; */
+	scale: 0.8;
 }
 
 #hosts {
-  margin-left: 5px;
+	margin-left: 5px;
 }
 
 .title {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 10px;
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	gap: 10px;
 }
 
-.title > div, .title > div > img {
-  width: 20px;
-  height: 20px;
+.title > div,
+.title > div > img {
+	width: 20px;
+	height: 20px;
 }
 
 .title button {
-  height: 25px;
-  max-width: 25px;
-  display: block;
-  position: relative;
+	height: 25px;
+	max-width: 25px;
+	display: block;
+	position: relative;
 }
 
 .users-list {
-  margin-top: 15px;
-  display: flex;
+	margin-top: 15px;
+	display: flex;
 }
 
 .users-list div {
-  background-color: color-mix(in srgb, color-mix(in srgb, var(--vscode-sideBar-background) 80%, #ffffffcc 20%) 80%, var(--colour) 20%);
+	background-color: color-mix(
+		in srgb,
+		color-mix(in srgb, var(--vscode-sideBar-background) 80%, #ffffffcc 20%)
+			80%,
+		var(--colour) 20%
+	);
 }
 
 .users-list div.offline {
-  opacity: 0.5;
+	opacity: 0.5;
 }
 
 #new-project-btn {
-  display: none;
+	display: none;
 }
