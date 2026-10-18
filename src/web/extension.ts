@@ -20,78 +20,49 @@ import { WebsocketProvider } from "y-websocket";
 import { CollabAuth } from "./auth";
 import { AuthProvider, providerId } from "./authProvider";
 
-let socket: Socket;
+let socket: Socket; // the current connection to the main server
 
-let hostSocket: Socket | null = null;
-let chid: string | null = null;
-let cyjs: string | null = null;
-// let chost: string | null = null;
-// let cid: number | null = null;
-let croom: string | null = null;
-let cproject: string | null = null;
-let cprojectName: string | null = null;
-let cvisibility: number | null = null;
-let isHost = false;
+let hostSocket: Socket | null = null; // the connection to the host server
+let chid: string | null = null; // the id of the currently connected host
+let cyjs: string | null = null; // the url to the yjs server of the current host
+let croom: string | null = null; // the name of the room currently open
+let cproject: string | null = null; // the id of the project currently open
+let cprojectName: string | null = null; // the name of the project currently open
+let cvisibility: number | null = null; // the visibility of the current project / room
+let isHost = false; // whether your the host of the room or not
 
-let collabFs: CollabFs | null = null;
+let collabFs: CollabFs | null = null; // custom file system for rooms and projects
 
-let presence: any[] = [];
+let presence: any[] = []; // the list of users in the room / project
 
-// const user = {
-//     name: randomName,
-//     colour: `hsl(${hue} 70% 55%)`,
-//     bandColour: `hsla(${hue}, 70%, 55%, 0.25)`,
-//     clientId: Math.random().toString(36).slice(6)
-// };
-
-// const accountUser = { name: "", colour: "", uuid: null };
+// the name, colour, and uuid given by the host after connecting
 let hostUser: { name: string; colour: string; uuid: string | null } | null =
 	null;
 
+// when the account state changes, refresh the shown user
 async function onSession(
 	provider: SidebarProvider,
 	session: vscode.AuthenticationSession | undefined,
 ) {
 	provideUser(provider, session);
-
-	// if (session === undefined) {
-	//     if (user.name.startsWith("guest") && user.name.length === 11) { return; }
-	//     const randomName = `guest${genId(6)}`;
-	//     user.name = randomName;
-	//     const hue = Math.floor(Math.random() * 360);
-	//     user.colour = `hsl(${hue} 70% 55%)`;
-	//     user.bandColour = `hsla(${hue}, 70%, 55%, 0.25)`;
-
-	//     provider.postMsg({ user });
-
-	//     return;
-	// }
-
-	// user.name = session.account.label;
-
-	// const res = await fetch("https://auth.silverspace.io/api/account/" + session.account.id + "/");
-	// const data = await res.json();
-
-	// if (data.colour) {
-	//     user.colour = data.colour;
-	//     user.bandColour = data.colour + "40";
-
-	//     provider.postMsg({ colour: user.colour });
-	// }
 }
 
+// update the sidebar with the current logged in user / from host
 async function provideUser(
 	provider: SidebarProvider,
 	csession?: vscode.AuthenticationSession,
 ) {
 	if (hostUser !== null) {
+		// if connected to a host, use their data
 		provider.postMsg({ user: hostUser });
 	} else {
+		// otherwise, get the currently logged in user
 		const session = csession
 			? csession
 			: await vscode.authentication.getSession(providerId, [], {
 					silent: true,
 				});
+		// if they are logged in, fetch details
 		if (session !== undefined) {
 			const res = await fetch(
 				"https://auth.silverspace.io/api/account/" +
@@ -107,6 +78,7 @@ async function provideUser(
 				},
 			});
 		} else {
+			// otherwise, return blank
 			provider.postMsg({
 				user: { name: "", colour: "#ffffff", uuid: null },
 			});
@@ -114,6 +86,7 @@ async function provideUser(
 	}
 }
 
+// for connecting to the server, extract the token from the auth session in vscode
 async function getSessionToken(cb: (data: object) => void) {
 	const session = await vscode.authentication.getSession(providerId, [], {
 		silent: true,
@@ -126,21 +99,27 @@ async function getSessionToken(cb: (data: object) => void) {
 	}
 }
 
+// the namespace all rooms and projects use
 export const FILE_SYSTEM_SCHEME = "collab";
 
+// runs when the window loads
 export function activate(context: vscode.ExtensionContext) {
+	// connect to the main server
 	socket = io("https://server.silverspace.io", {
 		autoConnect: false,
 		path: "/collab/socket.io",
-		auth: getSessionToken,
+		auth: getSessionToken, // pass in the account session token
 	});
 
+	// on connecting to the main server, reconnect to the host, or open the current room / project
 	let first = true;
 	socket.on("connect", () => {
+		// reconnect if previously disconnected
 		if (!first && chid !== null) {
 			selectHost(provider, chid, croom, cproject);
 		}
 
+		// open the currently open project / room if its the first load
 		const folder = vscode.workspace.workspaceFolders?.[0];
 		if (first && folder?.uri.scheme === "collab") {
 			const params = new URLSearchParams(folder.uri.query);
@@ -160,29 +139,26 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 
 		first = false;
-		// console.log("connected!");
-		// vscode.window.showInformationMessage("connected!!!");
 	});
 
+	// register the custom rooms / projects file system
 	collabFs = new CollabFs();
-
 	context.subscriptions.push(
 		vscode.workspace.registerFileSystemProvider("collab", collabFs, {
 			isCaseSensitive: true,
 		}),
 	);
-	console.log("collab: FS provider registered", Date.now());
+	console.log("collab: fs provider setup");
 
+	// on window close, disconnect from the main server
 	context.subscriptions.push({
 		dispose: () => socket.disconnect(),
 	});
 
+	// setup the auth handler for the account system in vscode
 	const auth = new CollabAuth(context);
-
 	context.subscriptions.push(vscode.window.registerUriHandler(auth));
-
 	const authProvider = new AuthProvider(context, auth);
-
 	context.subscriptions.push(
 		authProvider,
 		vscode.authentication.registerAuthenticationProvider(
@@ -192,11 +168,13 @@ export function activate(context: vscode.ExtensionContext) {
 		),
 	);
 
-	const provider = new SidebarProvider(context.extensionUri);
+	const provider = new SidebarProvider(context.extensionUri); // setup the sidebar
 
-	let justLoaded = false;
+	let justLoaded = false; // whether a room / project was just opened
 
+	// these trigger when a message is received from the sidebar
 	provider.msgCallbacks.push(async (msg) => {
+		// when the sidebar requests the state on load, return it
 		if (msg.ready && chid && (croom !== null || cprojectName !== null)) {
 			provider.postMsg({
 				state: {
@@ -209,14 +187,14 @@ export function activate(context: vscode.ExtensionContext) {
 			});
 		}
 
+		// requesting the user list
 		if (msg.presence) {
 			provider.postMsg({ presence });
-			// if (hostSocket) {
-			//     hostSocket.emit("presence");
-			// }
 		}
 
+		// requesting the hosts list
 		if (msg.hosts) {
+			// get the host list from the main server
 			socket.emit(
 				"hosts",
 				(
@@ -232,16 +210,15 @@ export function activate(context: vscode.ExtensionContext) {
 			);
 		}
 
+		// if connected to a host, requesting rooms uses the host
 		if (msg.rooms && hostSocket) {
 			hostSocket.emit("rooms", (rooms: string[]) => {
 				provider.postMsg({ rooms });
 			});
 		}
 
+		// to join a room, just open a folder with the path and connect on the window load
 		if (msg.joinRoom && hostSocket) {
-			// context.globalState.update("host", chost);
-			// context.globalState.update("yjs_host", cyjs);
-			// context.globalState.update("room", msg.joinRoom);
 			const workspaceUri = vscode.Uri.parse(
 				`${FILE_SYSTEM_SCHEME}://${encodeURIComponent(msg.joinRoom)}/${encodeURIComponent(msg.joinRoom)}`,
 			).with({
@@ -252,30 +229,17 @@ export function activate(context: vscode.ExtensionContext) {
 			});
 		}
 
+		// only join a host if its the second time requesting, since the first time is a duplicate of the window load
 		if (msg.selectHost) {
 			if (!justLoaded) {
 				selectHost(provider, msg.selectHost);
 			}
 			justLoaded = false;
-			// chost = msg.selectHost;
-
-			// hostSocket = io(msg.selectHost, { path: "/socket.io" });
-
-			// hostSocket.on("connect", () => {
-			//     vscode.window.showInformationMessage(`connected to host!: ${msg.selectHost}`);
-
-			//     provider.postMsg({ hostConnected: true });
-
-			//     hostSocket.emit("projects", (projects: any[]) => {
-			//         vscode.window.showInformationMessage(`all projects: ${JSON.stringify(projects)}`);
-			//         provider.postMsg({ projects });
-			//     });
-			// });
 		}
 
+		// get the new project details, then request its creation and join it
 		if (msg.newProject) {
-			// vscode.window.showInformationMessage(`you want a new project!`);
-
+			// get details
 			const name = await vscode.window.showInputBox({
 				prompt: "What's the project name?",
 				placeHolder: "name",
@@ -295,38 +259,36 @@ export function activate(context: vscode.ExtensionContext) {
 
 			if (name !== undefined && visibility !== undefined) {
 				if (hostSocket) {
+					// request creation
 					const id: string | null = await hostSocket.emitWithAck(
 						"newProject",
 						name,
 						["private", "public"].indexOf(visibility.label),
 					);
 
+					// join it
 					if (id !== null && name !== undefined) {
 						openProject(id, name);
 					}
-
-					// provider.postMsg({newProject: {name, path, id}});
-
-					// hostSocket.emit("newProject", "", path, name, (id: number) => {
-					//     // vscode.window.showInformationMessage(`new project! ${id}`);
-					// });
 				}
 			}
 		}
 
+		// open a project from the sidebar
 		if (msg.openProject && hostSocket) {
 			openProject(msg.openProject.id, msg.openProject.name);
 		}
 
+		// get the projects list from the host connection
 		if (msg.projects && hostSocket) {
 			provider.postMsg({
 				projects: await hostSocket.emitWithAck("projects"),
 			});
 		}
 
+		// for a new room, get the details, then, create a new room with the current window
 		if (msg.newRoom) {
-			// vscode.window.showInformationMessage(`you want a new room!`);
-
+			// get details
 			const name = await vscode.window.showInputBox({
 				title: "What's the name of the room?",
 				placeHolder: "name",
@@ -344,13 +306,14 @@ export function activate(context: vscode.ExtensionContext) {
 			);
 
 			if (name !== undefined && visibility !== undefined && hostSocket) {
+				// request creation
 				const v = ["private", "public"].indexOf(visibility.label);
 				hostSocket.emit("newRoom", name, v, (success: boolean) => {
 					if (!success) {
 						vscode.window.showInformationMessage("new room failed");
 						return;
 					}
-					// vscode.window.showInformationMessage(`new room! ${success}`);
+					// update state
 					croom = name;
 					cvisibility = v;
 					provider.postMsg({
@@ -362,35 +325,41 @@ export function activate(context: vscode.ExtensionContext) {
 							page: "rooms",
 						},
 					});
-					// provider.postMsg({ newRoom: {name, visibility: v} });
 					isHost = true;
 
+					// connect syncing server files
 					openDocuments();
 				});
 			}
 		}
 
+		// request leaving of the current room / project
 		if (msg.leaveRoom && hostSocket) {
+			// use the leaveRoom event
 			hostSocket.emit("leaveRoom", () => {
-				provider.postMsg({ leftRoom: true });
+				provider.postMsg({ leftRoom: true }); // let the sidebar know it left
 				if (!isHost) {
+					// if a room / project is open, close the window
 					vscode.commands.executeCommand(
 						"workbench.action.closeFolder",
 					);
 				}
+				// update state
 				isHost = false;
 				croom = null;
+				// close synced files
 				for (const s of synced.values()) {
 					s.dispose();
 				}
 				synced.clear();
 				opening.clear();
-				// cfile = null;
 			});
 		}
 
+		// when the sidebar requests a login, use the vscode api with the custom provider
 		if (msg.auth) {
 			try {
+				// use vscode api
 				const session = await vscode.authentication.getSession(
 					providerId,
 					[],
@@ -398,24 +367,23 @@ export function activate(context: vscode.ExtensionContext) {
 						createIfNone: true,
 					},
 				);
-				// vscode.window.showInformationMessage(`signed in: ${session.account.label}`);
+				// update sidebar
 				provider.postMsg({ cauth: session });
-				onSession(provider, session);
+				onSession(provider, session); // trigger auth updates
 
+				// reconnect with new session
 				socket.disconnect().connect();
 			} catch {}
 		}
 
+		// request the user name and colour
 		if (msg.user) {
 			provideUser(provider);
-			// try {
-			//     const session = await vscode.authentication.getSession(providerId, [], { silent: true });
-			//     provider.postMsg({ cauth: session });
-			//     onSession(provider, session);
-			// } catch { }
 		}
 
+		// logout / remove the current session
 		if (msg.logout) {
+			// get the current session
 			const session = await vscode.authentication.getSession(
 				providerId,
 				[],
@@ -424,29 +392,32 @@ export function activate(context: vscode.ExtensionContext) {
 				},
 			);
 
+			// remove the current session
 			if (session) {
 				await authProvider.removeSession(session.id);
-				provider.postMsg({ loggedOut: true });
-				// onSession(provider, undefined);
-
-				// socket.disconnect().connect();
+				provider.postMsg({ loggedOut: true }); // let the sidebar know
 			}
 		}
 
+		// copy the invite link for the currently open room / project
 		if (msg.invite && chid) {
+			// use the inviteLink function
 			await vscode.env.clipboard.writeText(
 				inviteLink(croom ?? cprojectName ?? "", chid, cproject),
 			);
-			vscode.window.showInformationMessage("Invite link copied!");
+			vscode.window.showInformationMessage("Invite link copied!"); // let the user know it worked
 		}
 	});
 
+	// when the user logs in / logs out, update state and sidebar
 	context.subscriptions.push(
 		vscode.authentication.onDidChangeSessions(async (e) => {
 			if (e.provider.id !== providerId) {
+				// only trigger for the custom account system
 				return;
 			}
 
+			// get the current session
 			const session = await vscode.authentication.getSession(
 				providerId,
 				[],
@@ -455,41 +426,28 @@ export function activate(context: vscode.ExtensionContext) {
 				},
 			);
 
+			// update the sidebar
 			if (session) {
 				provider.postMsg({ cauth: session });
 			} else {
 				provider.postMsg({ loggedOut: true });
 			}
 
-			onSession(provider, session);
+			onSession(provider, session); // trigger other paths
 
-			socket.disconnect().connect();
+			socket.disconnect().connect(); // reconnect with new session
 		}),
 	);
 
+	// register the sidebar with vscode
 	context.subscriptions.push(
 		vscode.window.registerWebviewViewProvider("collabView", provider),
 	);
 
-	//
-
-	//
-
-	//
-
-	// context.subscriptions.push(
-	//     vscode.workspace.onDidSaveTextDocument((document) => {
-	//         if ((!croom && !cprojectName) || !hostSocket) { return; }
-	//         const file = getRelativePath(document.uri);
-	//         if (!file) { return; }
-	//         hostSocket.emit('saveFile', file);
-	//     }),
-	// );
-
-	//
-
+	// on window load, check the user authentication
 	(async () => {
 		try {
+			// get their session
 			const session = await vscode.authentication.getSession(
 				providerId,
 				[],
@@ -497,24 +455,28 @@ export function activate(context: vscode.ExtensionContext) {
 					silent: true,
 				},
 			);
+			// update the sidebar
 			provider.postMsg({ cauth: session });
 			onSession(provider, session);
 		} catch {}
 
+		// only connect to the main host after trying to authenticate
 		socket.connect();
 	})();
 
 	console.log("Collab started");
 }
 
+// given the id of a host, and the room / project to open, setup the connection and open it
 async function selectHost(
 	provider: SidebarProvider,
 	hid: string,
 	room: string | null = null,
 	project_id: string | null = null,
 ) {
-	chid = hid;
+	chid = hid; // update the current host
 
+	// disconnect the previous host
 	if (hostSocket !== null) {
 		hostSocket.removeAllListeners();
 		hostSocket.disconnect();
@@ -523,6 +485,7 @@ async function selectHost(
 		provideUser(provider);
 	}
 
+	// let the main server know you are joining a host, it returns an auth token and the host details
 	const {
 		url,
 		yjs_url,
@@ -535,9 +498,11 @@ async function selectHost(
 		return;
 	}
 
+	// use the host details to connect
 	let first = true;
 	hostSocket = io(url, {
 		path: "/socket.io",
+		// register an auth callback that checks the current session and passes it through the main server before connecting
 		auth: (cb) => {
 			let ifirst = first;
 			first = false;
@@ -555,6 +520,7 @@ async function selectHost(
 		},
 	});
 
+	// on connecting to the host, let the sidebar know
 	hostSocket.on("connect", async () => {
 		provider.postMsg({ hostConnected: true });
 
@@ -562,16 +528,19 @@ async function selectHost(
 			return;
 		}
 
+		// if opening a room
 		if (room !== null) {
+			// open with the room name
 			hostSocket.emit("joinRoom", room, (visibility: number | null) => {
 				if (visibility === null) {
+					// if there was no room, or it failed, close the window
 					vscode.commands.executeCommand(
 						"workbench.action.closeFolder",
 					);
 					return;
 				}
 
-				// vscode.window.showInformationMessage(`joined room: ${room}`);
+				// update state
 				croom = room;
 				cvisibility = visibility;
 				provider.postMsg({
@@ -583,17 +552,19 @@ async function selectHost(
 						page: "rooms",
 					},
 				});
-				// provider.postMsg({ joinedRoom: room });
 
+				// set the connection for the custom file system
 				if (collabFs !== null && hostSocket !== null) {
 					collabFs.setSocket(hostSocket);
 				}
 
-				openDocuments();
+				openDocuments(); // connect & sync currently open files
 			});
 		}
 
+		// if opening a project
 		if (project_id !== null) {
+			// open the project
 			const {
 				name,
 				visibility,
@@ -601,10 +572,12 @@ async function selectHost(
 				await hostSocket.emitWithAck("openProject", project_id);
 
 			if (!name || visibility === null) {
+				// if failed, close the window
 				vscode.commands.executeCommand("workbench.action.closeFolder");
 				return;
 			}
 
+			// update state
 			cprojectName = name;
 			cproject = project_id;
 			cvisibility = visibility;
@@ -618,39 +591,36 @@ async function selectHost(
 				},
 			});
 
+			// register connection with file system
 			if (collabFs !== null) {
 				collabFs.setSocket(hostSocket);
 			}
 
-			openDocuments();
+			openDocuments(); // sync currently open files
 		}
 	});
 
+	// when receiving your name and colour, update state
 	hostSocket.on(
 		"data",
 		(name: string, colour: string, uuid: string | null) => {
-			console.log(name, colour, uuid);
 			hostUser = { name, colour, uuid };
-			provideUser(provider);
+			provideUser(provider); // provide the new data
 		},
 	);
 
+	// on a new user list, update the sidebar
 	hostSocket.on("presence", (users: any[]) => {
 		presence = users;
 		provider.postMsg({ presence: users });
 	});
 
-	// hostSocket.on("disconnect", () => {
-	//     if (chid !== null) {
-	//         selectHost(provider, chid, croom, cproject);
-	//     }
-	// });
-
+	// for the host, stores currently initialising files
 	const initing = new Map<string, Promise<void>>();
 	const initConns = new Map<string, { p: WebsocketProvider; d: Y.Doc }>();
 
+	// when the room is deleted close the window and clear state
 	hostSocket.on("roomDeleted", () => {
-		// vscode.window.showInformationMessage("room deleted?");
 		provider.postMsg({ leftRoom: true });
 		if (!isHost) {
 			vscode.commands.executeCommand("workbench.action.closeFolder");
@@ -659,17 +629,20 @@ async function selectHost(
 		croom = null;
 	});
 
+	// when the host requests to initialise a file, the host inits it
 	hostSocket.on("initFile", async (uri: string, id: string, callback) => {
-		let pending = initing.get(id);
+		let pending = initing.get(id); // check if its already initing
 		if (!pending) {
+			// if it isn't
 			pending = (async () => {
+				// connect to the syncing server
 				const doc = new Y.Doc();
 				const provider = new WebsocketProvider(yjs_url, id, doc);
 				initConns.set(id, { p: provider, d: doc });
 				const ytext = doc.getText("content");
-
 				await waitSync(provider);
 
+				// if its not initialised, set its contents
 				const meta = doc.getMap("meta");
 
 				if (!meta.get("seeded")) {
@@ -684,9 +657,10 @@ async function selectHost(
 		}
 		await pending;
 
-		callback();
+		callback(); // once done, return
 	});
 
+	// once someone else in the room has connected, the init connection can be deleted
 	hostSocket.on("connectedFile", (id: string) => {
 		initing.delete(id);
 		const conn = initConns.get(id);
@@ -697,8 +671,7 @@ async function selectHost(
 		initConns.delete(id);
 	});
 
-	//
-
+	// when a user saves a file, broadcast to the other users to also save their versions
 	hostSocket.on("saveFile", async (file: string) => {
 		const uri = getAbsoluteUri(file);
 		if (!uri) {
@@ -738,8 +711,6 @@ async function selectHost(
 		) => {
 			await writeFile(uri, content, options);
 
-			///////////
-			// AI code
 			// If the host has this file open, save it to clear the dirty indicator
 			const absoluteUri = getAbsoluteUri(uri);
 			if (absoluteUri) {
@@ -750,7 +721,6 @@ async function selectHost(
 					await doc.save();
 				}
 			}
-			///////////
 
 			callback();
 		},
@@ -778,12 +748,7 @@ async function selectHost(
 	);
 }
 
-//
-
-//
-
-//
-
+// given a project id and name, open the window for it
 function openProject(id: string, name: string) {
 	const workspaceUri = vscode.Uri.parse(
 		`${FILE_SYSTEM_SCHEME}://${encodeURIComponent(name)}/${encodeURIComponent(name)}`,
@@ -795,24 +760,23 @@ function openProject(id: string, name: string) {
 	});
 }
 
-//
+const synced = new Map<string, SyncedFile>(); // stores all currently synced open files
 
-//
-
-//
-
-const synced = new Map<string, SyncedFile>();
-
+// route opened files into the connection function
 vscode.workspace.onDidOpenTextDocument(async (document) => {
 	openDocument(document);
 });
 
+// sync all currently open files
 function openDocuments() {
+	// disconnect all currently synced files
 	for (const s of synced.values()) {
 		s.dispose();
 	}
 	synced.clear();
 	opening.clear();
+
+	// connect the current ones
 	for (const document of vscode.workspace.textDocuments) {
 		if (document.isUntitled) {
 			continue;
@@ -821,21 +785,24 @@ function openDocuments() {
 	}
 }
 
+// stores all the currently opening files
 const opening = new Set<string>();
 
+// given a vscode file, sync it
 function openDocument(document: vscode.TextDocument) {
-	const path = document.uri.toString();
+	const path = document.uri.toString(); // get its path
 	if (synced.has(path) || opening.has(path)) {
 		return;
 	}
 
-	const file = getRelativePath(document.uri);
+	const file = getRelativePath(document.uri); // get its relative path
 	if (!file || (!croom && !cprojectName) || !cyjs || !hostSocket) {
 		return;
 	}
 
-	opening.add(path);
+	opening.add(path); // mark it as opening
 
+	// request to open it from the host
 	hostSocket.emit("openFile", file, async (id: string, wasInit: boolean) => {
 		let s: SyncedFile | undefined;
 		try {
@@ -846,6 +813,7 @@ function openDocument(document: vscode.TextDocument) {
 				hostSocket.emit("closeFile", file, () => {});
 				return;
 			}
+			// start a new synced file with the file
 			s = await SyncedFile.create(
 				hostSocket,
 				cyjs,
@@ -854,13 +822,15 @@ function openDocument(document: vscode.TextDocument) {
 				hostSocket.id ?? "none",
 			);
 		} finally {
-			opening.delete(path);
+			opening.delete(path); // finish opening
 		}
 
+		// if a host was initialising the file, let them know they can remove their connection
 		if (wasInit) {
 			hostSocket.emit("connectedFile", id);
 		}
 
+		// if the file was closed while opening, close the sync connection
 		if (document.isClosed) {
 			s.dispose();
 			hostSocket.emit("closeFile", file, () => {});
@@ -873,10 +843,11 @@ function openDocument(document: vscode.TextDocument) {
 			return;
 		}
 
-		synced.set(path, s);
+		synced.set(path, s); // store the connection
 	});
 }
 
+// when closing a file, close the syncing connection
 vscode.workspace.onDidCloseTextDocument((document) => {
 	const path = document.uri.toString();
 	const s = synced.get(path);
@@ -890,38 +861,5 @@ vscode.workspace.onDidCloseTextDocument((document) => {
 		hostSocket.emit("closeFile", file, () => {});
 	}
 });
-
-// let cfile: string | null = null;
-// let csyncedFile: SyncedFile | null = null;
-
-//   vscode.window.onDidChangeActiveTextEditor((editor) => {
-//         if (!editor) { return; }
-
-//         const text = editor.document.getText();
-
-//         const file = getRelativePath(editor.document.uri);
-//         if (!file || !croom) { return; }
-//         openFile(context, file, text, editor);
-//     });
-
-// function openFile(context: vscode.ExtensionContext, file: string, content: string, editor: vscode.TextEditor) {
-//     if (cfile !== null) {
-//         hostSocket.emit("closeFile", cfile, () => {
-//             openFile(context, file, content, editor);
-//         });
-//         csyncedFile?.dispose();
-//         cfile = null;
-//         return;
-//     }
-
-//     cfile = file;
-
-//     hostSocket.emit("openFile", file, async (id: string) => {
-//         if (!cyjs) { return; }
-
-//         csyncedFile = await SyncedFile.create(cyjs, id, editor.document, content);
-//         context.subscriptions.push(csyncedFile);
-//     });
-// }
 
 export function deactivate() {}

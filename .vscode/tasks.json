@@ -1,44 +1,66 @@
 {
-	"version": "2.0.0",
-	"tasks": [
-		{
-			"type": "npm",
-			"script": "compile-web",
-			"group": {
-				"kind": "build",
-				"isDefault": true
-			},
-			"problemMatcher": ["$ts-webpack", "$tslint-webpack"]
-		},
-		{
-			"type": "npm",
-			"script": "watch-web",
-			"group": "build",
-			"isBackground": true,
-			"problemMatcher": ["$ts-webpack-watch", "$tslint-webpack-watch"]
-		},
-		{
-			"label": "open-peer-2-window",
-			"type": "process",
-			"command": "code",
-			"args": [
-				"--user-data-dir=${workspaceFolder}/.vscode-peer2/user-data",
-				"--extensions-dir=${workspaceFolder}/.vscode-peer2/extensions",
-				"--extensionDevelopmentPath=${workspaceFolder}",
-				"--new-window",
-				"${workspaceFolder}"
-			],
-			"problemMatcher": [],
-			"presentation": {
-				"reveal": "silent",
-				"close": true
-			}
-		},
-		{
-			"label": "peers: build + open peer 2",
-			"dependsOrder": "sequence",
-			"dependsOn": ["npm: compile-web", "open-peer-2-window"],
-			"problemMatcher": []
-		}
-	]
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "type": "npm",
+            "script": "compile-web",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [
+                "$ts-webpack",
+                "$tslint-webpack"
+            ]
+        },
+        {
+            "type": "npm",
+            "script": "watch-web",
+            "group": "build",
+            "isBackground": true,
+            "problemMatcher": [
+                "$ts-webpack-watch",
+                "$tslint-webpack-watch"
+            ]
+        },
+        {
+            "label": "open-peer-2-window",
+            "type": "process",
+            "command": "code",
+            "args": [
+                "--user-data-dir=${workspaceFolder}/.vscode-peer2/user-data",
+                "--extensions-dir=${workspaceFolder}/.vscode-peer2/extensions",
+                "--extensionDevelopmentPath=${workspaceFolder}",
+                "--new-window",
+                "${workspaceFolder}"
+            ],
+            "osx": {
+                "command": "/bin/sh",
+                "args": [
+                    "-c",
+                    "exec \"$(dirname \"$0\")/../Resources/app/bin/code\" \"$@\"",
+                    "${execPath}",
+                    "--user-data-dir=${workspaceFolder}/.vscode-peer2/user-data",
+                    "--extensions-dir=${workspaceFolder}/.vscode-peer2/extensions",
+                    "--extensionDevelopmentPath=${workspaceFolder}",
+                    "--new-window",
+                    "${workspaceFolder}"
+                ]
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "silent",
+                "close": true
+            }
+        },
+        {
+            "label": "peers: build + open peer 2",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "npm: compile-web",
+                "open-peer-2-window"
+            ],
+            "problemMatcher": []
+        }
+    ]
 }
