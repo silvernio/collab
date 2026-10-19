@@ -1,48 +1,34 @@
 import * as vscode from "vscode";
+import { randomString, sha256b64url } from "./utils";
 
-// AI code
-function b64url(bytes: Uint8Array): string {
-	let s = "";
-	for (const b of bytes) {
-		s += String.fromCharCode(b);
-	}
-	return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-function randomString(byteLength = 32): string {
-	return b64url(crypto.getRandomValues(new Uint8Array(byteLength)));
-}
-async function sha256b64url(input: string): Promise<string> {
-	const digest = await crypto.subtle.digest(
-		"SHA-256",
-		new TextEncoder().encode(input),
-	);
-	return b64url(new Uint8Array(digest));
-}
-//
-
+// the pending auth flow
 interface PendingAuth {
 	resolve: (code: string) => void;
 }
 
+// allows vscode to open the auth website and receive messages back from it naturally
 export class CollabAuth implements vscode.UriHandler {
-	private pending = new Map<string, PendingAuth>();
+	private pending = new Map<string, PendingAuth>(); // pending auth flows
 	context: vscode.ExtensionContext;
 
 	constructor(context: vscode.ExtensionContext) {
 		this.context = context;
 	}
 
+	// request and trigger an auth flow to login the user in the browser
 	async startAuth() {
 		const state = randomString();
 		const verifier = randomString();
 		const challenge = await sha256b64url(verifier);
 
+		// create the url
 		const cb = await vscode.env.asExternalUri(
 			vscode.Uri.parse(
 				`${vscode.env.uriScheme}://${this.context.extension.id}/auth`,
 			),
 		);
 
+		// add the secrets for checking later on
 		const url = new URL("/", "https://auth.silverspace.io");
 		url.searchParams.set("cb", cb.toString());
 		url.searchParams.set("state", state);
@@ -52,16 +38,11 @@ export class CollabAuth implements vscode.UriHandler {
 			this.pending.set(state, { resolve }),
 		);
 
+		// open the auth website
 		await vscode.env.openExternal(vscode.Uri.parse(url.toString()));
 
-		if (
-			this.context.extensionMode === vscode.ExtensionMode.Development &&
-			false
-		) {
-			this.manualCallback();
-		}
-
 		try {
+			// wait for the auth website to complete
 			const code = await vscode.window.withProgress(
 				{
 					location: vscode.ProgressLocation.Notification,
@@ -82,17 +63,19 @@ export class CollabAuth implements vscode.UriHandler {
 							.finally(() => clearTimeout(timer));
 					}),
 			);
-			return { code, verifier };
+			return { code, verifier }; // return the auth data
 		} finally {
 			this.pending.delete(state);
 		}
 	}
 
+	// runs when the user completes the auth website
 	handleUri(uri: vscode.Uri) {
 		if (!uri.path.startsWith("/auth")) {
 			return;
 		}
 
+		// get data from url
 		const q = new URLSearchParams(uri.query);
 		const state = q.get("state");
 		const code = q.get("code");
@@ -105,18 +88,6 @@ export class CollabAuth implements vscode.UriHandler {
 		if (state !== null) {
 			this.pending.delete(state);
 		}
-		pending.resolve(code);
-	}
-
-	async manualCallback() {
-		const uri = await vscode.window.showInputBox({
-			title: "manual callback",
-			prompt: "link:",
-			placeHolder: "link",
-			ignoreFocusOut: true,
-		});
-		if (uri) {
-			this.handleUri(vscode.Uri.parse(uri.trim()));
-		}
+		pending.resolve(code); // pass the url data back
 	}
 }
